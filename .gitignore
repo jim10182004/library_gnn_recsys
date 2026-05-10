@@ -55,13 +55,21 @@ checkpoints/
 *.pkl
 
 # ===== 結果（可由 visualize.py 重新產生）=====
-results/figures/
+results/figures/*
 results/*.csv
 results/*.json
 results/*.html
 results/ablation/*.csv
 results/ablation/*.json
 results/ablation/*.md
+# Keep lightweight portfolio artifacts referenced by README.
+!results/summary.csv
+!results/summary_clean.csv
+!results/figures/
+!results/figures/fig20_pipeline.png
+!results/figures/fig21_radar.png
+!results/figures/fig22_ranked_bars.png
+!results/figures/fig06_item_tsne_lightgcn_si.png
 # 但要保留 README / 重要說明
 !results/**/README.md
 

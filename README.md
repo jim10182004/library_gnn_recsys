@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange)](https://pytorch.org)
 [![LightGCN](https://img.shields.io/badge/Model-LightGCN-9cf)](https://arxiv.org/abs/2002.02126)
-[![Tests](https://img.shields.io/badge/tests-34_passed-green)](#-測試)
+[![Tests](https://img.shields.io/badge/tests-35_passed%2C_1_skipped-green)](#-測試)
 [![License](https://img.shields.io/badge/license-Academic-lightgrey)](#-授權)
 
 ---
@@ -260,7 +260,7 @@ python -m pytest --basetemp="$LOCALAPPDATA/pytest_tmp"
 python -m pytest
 ```
 
-目前 **34 個測試通過**：
+目前 **35 個測試通過，1 個測試因資料中沒有指定搜尋書名而略過**：
 
 | 檔案 | 測試什麼 |
 |---|---|
