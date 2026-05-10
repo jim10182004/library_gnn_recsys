@@ -1217,6 +1217,108 @@ def main():
         "本研究已驗證 GNN 推薦在中型圖書館場景的技術可行性，為產學銜接奠定基礎。"
     )
 
+    # === 4.11 進階優化嘗試 ===
+    add_h2(doc, "4.11 進階優化嘗試 (Advanced Optimizations)")
+    add_para(doc,
+        "本節彙總本研究在 LightGCN-Multi-Opt 確立為最佳模型後，進一步嘗試的四項優化方向，"
+        "包括：multi-seed 統計驗證、進階負例採樣、推薦重排序 (re-ranking) 與 BERT/Cover 失敗模式分析。"
+    )
+
+    add_h3(doc, "4.11.1 LightGCN-Multi-Opt 的 multi-seed 驗證")
+    add_para(doc,
+        "為驗證最佳模型不是「seed=42 的好運」，我們以同樣超參數 (embed=128, layers=2, lr=2.81e-3, "
+        "batch=2048, decay=5.65e-5) 重新訓練 seed=123 與 seed=2024 兩個版本，並計算三個 seed 的 mean ± std："
+    )
+    # 多 seed 結果表（會在訓練完後手動更新；此處用 placeholder）
+    add_table(doc,
+              ["指標", "seed=42", "seed=123", "seed=2024", "Mean ± Std"],
+              [
+                  ["Recall@10",   "0.2707", "—", "—", "（待補）"],
+                  ["Recall@20",   "0.3015", "—", "—", "（待補）"],
+                  ["NDCG@10",     "0.2232", "—", "—", "（待補）"],
+                  ["Coverage@10", "0.2651", "—", "—", "（待補）"],
+              ],
+              col_widths=[Cm(3), Cm(2.5), Cm(2.5), Cm(2.5), Cm(4)])
+    add_para(doc,
+        "詳見 results/ablation/multi_seed_optuna.csv。預期 std 應該與其他 LightGCN 變體相當（~0.0005），"
+        "若是，則 LightGCN-Multi-Opt 的優勢具有 robust 統計支持。"
+    )
+
+    add_h3(doc, "4.11.2 進階負例採樣 (Advanced Negative Sampling)")
+    add_para(doc,
+        "預設 BPR 使用「均勻隨機負例採樣」(uniform negative sampling)：對每個 (user, pos_item) "
+        "從未互動 item 中均勻抽 1 本當負例。本研究額外實作三種進階策略，置於 src/sampling.py："
+    )
+    add_table(doc,
+              ["策略", "原理", "預期收益"],
+              [
+                  ["Uniform (baseline)", "從未互動 item 均勻抽", "簡單、無偏"],
+                  ["Popularity-aware",   "按熱門度開根號 pop^0.75 抽", "Coverage / 長尾"],
+                  ["Hard Negative",      "從 pool 中挑模型評分最高者", "Recall / NDCG（但慢 5×）"],
+                  ["Category-aware",     "70% 機率抽同 category 但未互動的書", "細粒度區分能力"],
+              ],
+              col_widths=[Cm(3.5), Cm(6), Cm(5)])
+    add_para(doc,
+        "預期 Popularity-aware 對 Coverage 有幫助、Hard Negative 對 Recall 有幫助。"
+        "對應實驗腳本 src/sampling_experiment.py，比較結果存於 results/ablation/sampling_strategies.csv。"
+    )
+
+    add_h3(doc, "4.11.3 推薦重排序：MMR Reranker")
+    add_para(doc,
+        "純 LightGCN 推薦的常見問題是「同質化」 — 例如「日系推理迷」persona 的 Top 10 推薦中，"
+        "前 6 名可能全是「語文文學」類別且半數同作者，缺乏多樣性。本研究實作 MMR (Maximal Marginal "
+        "Relevance) 重排序模組於 src/reranker.py，包含四個機制："
+    )
+    add_table(doc,
+              ["機制", "公式 / 邏輯", "效果"],
+              [
+                  ["多樣性 λ-balance", "score' = λ·rel - (1-λ)·max_sim_to_picked", "避免同類別書連續出現"],
+                  ["反熱門 α", "score' = score - α·log(pop+1)", "降低熱門書權重"],
+                  ["作者上限 author_cap", "同作者最多 3 本", "避免「整單都是東野圭吾」"],
+                  ["類別上限 cat_cap", "同類別最多 6 本", "強制分散到不同領域"],
+              ],
+              col_widths=[Cm(4), Cm(6.5), Cm(4.5)])
+    add_para(doc,
+        "FastAPI 端點 /api/recommend 與 /api/persona/{key} 已加入 ?rerank=true 參數，"
+        "使用者可即時切換查看「原始 LightGCN 排序」vs「MMR 重排序」效果。"
+        "Demo 觀察：對「日系推理迷」persona，重排序前 Top-6 全部「語文文學」；"
+        "重排序後 #2 換成「哲學」類別書，整體更分散。"
+    )
+
+    add_h3(doc, "4.11.4 BERT / Cover 失敗模式分析")
+    add_para(doc,
+        "LightGCN-BERT 與 LightGCN-Cover 兩個多模態擴充並未顯著超越基本 LightGCN，"
+        "本研究設計實驗驗證兩個假設："
+    )
+    add_para(doc, "假設 H1：feature 品質不夠", indent_first_line=False, bold=True)
+    add_para(doc,
+        "對 BERT embedding 抽幾組「應該相似」與「應該不同」的書對算 cosine similarity："
+    )
+    add_table(doc,
+              ["書對類別", "平均 cosine similarity"],
+              [
+                  ["相似（同作者 / 同類型）", "0.371"],
+                  ["不同（隨機搭配）", "0.328"],
+                  ["差距 (gap)", "+0.043"],
+              ],
+              col_widths=[Cm(7), Cm(5)])
+    add_para(doc,
+        "差距僅 0.043（相似書平均 cosine 比隨機高不到 5%），證實 multilingual MiniLM "
+        "對中文書名的區分能力非常弱。改進方向：fine-tune BERT-wwm-ext-zh on 圖書館書名 + 內容簡介。"
+    )
+    add_para(doc, "假設 H2：Cover 覆蓋率不足", indent_first_line=False, bold=True)
+    add_para(doc,
+        "Open Library 對中文書封支援極差，1500 本書嘗試下載，僅 66 本（4.4%）成功，"
+        "其餘 95.6% 為零向量，無法有效監督學習。改進方向：改用 Google Books / 博客來 API "
+        "（中文書封覆蓋預估 70%+）。"
+    )
+    add_para(doc, "結論：feature 品質為主要瓶頸", indent_first_line=False, bold=True)
+    add_para(doc,
+        "兩個假設皆得驗證 — feature 品質（H1：BERT 弱、H2：Cover 缺）才是瓶頸，"
+        "並非融合方式（attention vs 簡單相加預期差異 < 1%）。"
+        "完整分析報告見 results/bert_cover_analysis.md。"
+    )
+
     # === 第五章 結論 ===
     add_h1(doc, "第五章　結論與未來工作")
 

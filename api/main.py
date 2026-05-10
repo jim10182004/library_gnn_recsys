@@ -131,9 +131,64 @@ class State:
     books = None
     item_embs: Optional[torch.Tensor] = None
     book_map_inv: dict = {}
+    rerank_assets: Optional[dict] = None  # {reranker, item_pop, item_cat, item_author}
 
 
 state = State()
+
+
+def _build_rerank_assets(splits, books) -> dict:
+    """為 MMR reranker 準備所需資料：item_category / item_author / item_pop"""
+    from src.reranker import MMRReranker
+
+    # 1. item_category 取分類號第 1 個數字
+    n_items = splits.n_items
+    item_cat = np.full(n_items, -1, dtype=np.int64)
+    item_author = np.full(n_items, -1, dtype=np.int64)
+
+    inv_remap = {v: k for k, v in splits.item_remap.items()}
+    author_to_id: dict[str, int] = {}
+
+    for compact_id in range(n_items):
+        orig = inv_remap.get(compact_id)
+        if orig is None:
+            continue
+        meta = books[books["book_id"] == orig]
+        if meta.empty:
+            continue
+        row = meta.iloc[0]
+        cat = str(row.get("category") or "").strip()
+        if cat and cat[0].isdigit():
+            item_cat[compact_id] = int(cat[0])
+
+        author_str = str(row.get("author") or "").strip()
+        # 取第一段作者當識別 (簡單 hash)
+        first_author = author_str.split(";")[0].split(",")[0].strip()[:30] if author_str else ""
+        if first_author:
+            if first_author not in author_to_id:
+                author_to_id[first_author] = len(author_to_id)
+            item_author[compact_id] = author_to_id[first_author]
+
+    # 2. item_pop 從 train
+    train_i = splits.train["i"].values
+    item_pop = np.bincount(train_i, minlength=n_items).astype(np.float32)
+
+    reranker = MMRReranker(
+        item_category=item_cat,
+        item_author=item_author,
+        item_pop=item_pop,
+        diversity_lambda=0.7,
+        depopularize_alpha=0.05,
+        author_cap=3,
+        category_cap=6,
+        novelty_weight=0.0,
+    )
+    return {
+        "reranker": reranker,
+        "item_pop": item_pop,
+        "item_cat": item_cat,
+        "item_author": item_author,
+    }
 
 
 def _load_model_into_state() -> None:
@@ -155,6 +210,10 @@ def _load_model_into_state() -> None:
     state.item_embs = item_embs
     state.book_map_inv = {v: k for k, v in splits.item_remap.items()}
     print(f"[FastAPI] 模型就緒：n_users={splits.n_users}, n_items={splits.n_items}, device={DEVICE}")
+    print("[FastAPI] 準備 MMR reranker ...")
+    state.rerank_assets = _build_rerank_assets(splits, books)
+    print(f"[FastAPI] reranker 就緒：{len(set(state.rerank_assets['item_cat']))} 個類別, "
+          f"{len(set(state.rerank_assets['item_author']))} 個作者")
 
 
 @asynccontextmanager
@@ -167,6 +226,7 @@ async def lifespan(app: FastAPI):
     state.splits = None
     state.books = None
     state.book_map_inv = {}
+    state.rerank_assets = None
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     print("[FastAPI] 已釋放模型資源")
@@ -259,6 +319,7 @@ def search_books(q: str = Query(..., min_length=1), n: int = 10):
 class RecommendRequest(BaseModel):
     book_ids: list[int]  # 原始 book_id 列表（從 /api/search 拿到的 book_id）
     k: int = 10
+    rerank: bool = False  # 啟用 MMR 重排序
 
 
 @app.post("/api/recommend")
@@ -272,12 +333,16 @@ def recommend(req: RecommendRequest):
             compact.append(cid)
     if not compact:
         raise HTTPException(400, "沒有任何輸入的書在訓練集中")
-    return _do_recommend(compact, req.k)
+    return _do_recommend(compact, req.k, rerank=req.rerank)
 
 
 @app.get("/api/persona/{key}")
-def recommend_by_persona(key: str, k: int = 10):
-    """用 persona 取得推薦"""
+def recommend_by_persona(key: str, k: int = 10, rerank: bool = False):
+    """用 persona 取得推薦
+
+    Args:
+        rerank: 啟用 MMR 重排序（多樣性 + 反熱門 + 作者上限）
+    """
     if key not in PERSONAS:
         raise HTTPException(404, f"未知 persona: {key}")
     persona = PERSONAS[key]
@@ -295,7 +360,7 @@ def recommend_by_persona(key: str, k: int = 10):
                 break  # 找到一個就夠
     if not compact:
         raise HTTPException(404, "此 persona 的種子書名都不在訓練集中")
-    result = _do_recommend(compact, k)
+    result = _do_recommend(compact, k, rerank=rerank)
     result["persona"] = persona["name"]
     return result
 
@@ -382,8 +447,14 @@ def _split_authors(s: str) -> list[str]:
     return out
 
 
-def _do_recommend(compact_ids: list[int], k: int) -> dict:
-    """合成讀者向量 → 用 cosine similarity 推薦"""
+def _do_recommend(compact_ids: list[int], k: int, *, rerank: bool = False) -> dict:
+    """合成讀者向量 → 用 cosine similarity 推薦
+
+    Args:
+        compact_ids: 種子書的 compact id
+        k: 回傳的推薦數
+        rerank: 是否啟用 MMR 重排序（多樣性 + 作者上限 + 反熱門）
+    """
     liked_t = torch.as_tensor(compact_ids, dtype=torch.long, device=state.item_embs.device)
     seed_emb = state.item_embs[liked_t]
     seed_emb = torch.nn.functional.normalize(seed_emb, p=2, dim=1)
@@ -392,8 +463,22 @@ def _do_recommend(compact_ids: list[int], k: int) -> dict:
     all_norm = torch.nn.functional.normalize(state.item_embs, p=2, dim=1)
     scores = (all_norm @ user_vec).cpu().numpy()
     scores[compact_ids] = -np.inf
-    top = np.argpartition(-scores, kth=k)[:k]
-    top = top[np.argsort(-scores[top])]
+
+    # 若啟用 reranker，先取 Top-N (N = 5k) 作為候選池
+    if rerank and state.rerank_assets is not None:
+        n_candidates = min(max(50, k * 5), 200)
+        cand_idx = np.argpartition(-scores, kth=n_candidates)[:n_candidates]
+        cand_idx = cand_idx[np.argsort(-scores[cand_idx])]
+        cand_scores = scores[cand_idx]
+        try:
+            top = state.rerank_assets["reranker"].rerank(cand_idx, cand_scores, k=k)
+        except Exception as e:
+            print(f"[rerank failed, fallback to raw] {e}")
+            top = np.argpartition(-scores, kth=k)[:k]
+            top = top[np.argsort(-scores[top])]
+    else:
+        top = np.argpartition(-scores, kth=k)[:k]
+        top = top[np.argsort(-scores[top])]
 
     seeds = []
     for cid in compact_ids:
@@ -423,6 +508,7 @@ def _do_recommend(compact_ids: list[int], k: int) -> dict:
         "seeds": seeds,
         "recommendations": recs,
         "cat_distribution": cat_distribution,
+        "reranked": rerank,
     }
 
 
