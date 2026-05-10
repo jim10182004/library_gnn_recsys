@@ -1,0 +1,20 @@
+# 不打包大檔，避免 Docker image 過大
+data/raw/
+data/processed/borrows.parquet
+data/processed/reservations.parquet
+data/processed/book_bert.parquet
+checkpoints/bprmf_best.pt
+checkpoints/lightgcn_si_best.pt
+checkpoints/lightgcn_multi_best.pt
+checkpoints/sasrec_best.pt
+results/
+notebooks/
+docs/
+__pycache__/
+*.pyc
+.git/
+.env
+.venv/
+.vscode/
+.idea/
+*.log

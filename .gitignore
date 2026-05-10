@@ -1,0 +1,113 @@
+# ===== Secrets / 環境設定 =====
+# 含資料來源路徑，請勿提交
+.env
+.env.local
+*.env.local
+*.secret
+*.pem
+*.key
+api_keys.txt
+
+# 但 .env.example 要追蹤（範本）
+!.env.example
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# Virtual envs
+venv/
+env/
+.venv/
+.env/
+
+# ===== 資料（大檔 + 可能含敏感資訊）=====
+data/raw/
+data/processed/
+data/splits/
+data/intermediate/
+data/cache/
+*.parquet
+*.feather
+# 但允許小範例
+!data/sample/
+
+# ===== 模型權重（大檔，可重新訓練）=====
+checkpoints/
+*.pt
+*.pth
+*.onnx
+*.h5
+*.pkl
+
+# ===== 結果（可由 visualize.py 重新產生）=====
+results/figures/
+results/*.csv
+results/*.json
+results/*.html
+results/ablation/*.csv
+results/ablation/*.json
+results/ablation/*.md
+# 但要保留 README / 重要說明
+!results/**/README.md
+
+# ===== Logs =====
+*.log
+logs/
+nohup.out
+
+# ===== IDE / Editor =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ===== Streamlit / FastAPI =====
+.streamlit/secrets.toml
+
+# ===== ngrok / 部署 =====
+ngrok
+ngrok.exe
+*.ngrok
+deploy/secrets/
+
+# ===== Build / Tools =====
+node_modules/
+.cache/
+.next/
+.nuxt/
+.parcel-cache/
+
+# ===== Word / docx 暫存 =====
+~$*.docx
+~$*.pptx
+~$*.xlsx
+
+# ===== HuggingFace cache =====
+.huggingface/
+
+# ===== 暫存圖檔 / 文檔 =====
+*.tmp
+*.bak
+.tmp/
