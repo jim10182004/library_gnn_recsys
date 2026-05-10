@@ -545,15 +545,15 @@ def build_ablation_slide(prs, total, page):
     # 4 個小卡，每個展示一個 ablation 結果
     blocks = [
         ("Multi-seed (n=3)", PRIMARY,
-         "LightGCN: R@10 = 0.263 ± 0.0003\n"
-         "LightGCN-SI: 0.267 ± 0.0006\n"
+         "LightGCN: R@10 = 0.265 ± 0.0003\n"
          "LightGCN-Multi: 0.268 ± 0.0005\n"
-         "→ std 極小，差異統計顯著"),
-        ("超參數 Grid (12 組)", SECONDARY,
-         "embed=128, layers=2 最佳\n"
-         "(R@20=0.3034)\n"
-         "embed 越大越好\n"
-         "layers 4 過度平滑反退化"),
+         "★ Multi-Opt: 0.2711 ± 0.0004\n"
+         "→ std 極小，最佳模型 robust"),
+        ("超參數 Grid + Optuna", SECONDARY,
+         "Grid 最佳 (d=128,L=2):\n"
+         "  R@20 = 0.3034\n"
+         "Optuna 20 trials → R@20 = 0.3233\n"
+         "→ 自動調參 +6.6%"),
         ("Side-info Ablation", ACCENT,
          "8 種組合幾乎無差別\n"
          "(差距 < 0.002)\n"
