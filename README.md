@@ -4,11 +4,14 @@
 > 在某市立圖書館 **130 萬筆**真實借閱資料上，
 > 透過 **Optuna 自動調參**達到 R@20 = 0.302、Coverage = 26.5%。
 
+[![Live Demo](https://img.shields.io/badge/🤗_Live_Demo-HF_Spaces-yellow)](https://huggingface.co/spaces/Jim20041018/library-gnn-demo)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange)](https://pytorch.org)
 [![LightGCN](https://img.shields.io/badge/Model-LightGCN-9cf)](https://arxiv.org/abs/2002.02126)
 [![Tests](https://img.shields.io/badge/tests-35_passed%2C_1_skipped-green)](#-測試)
 [![License](https://img.shields.io/badge/license-Academic-lightgrey)](#-授權)
+
+> 🚀 **線上 demo**：https://huggingface.co/spaces/Jim20041018/library-gnn-demo
 
 ---
 

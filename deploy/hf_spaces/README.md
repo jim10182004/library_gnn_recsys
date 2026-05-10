@@ -8,7 +8,7 @@ sdk_version: "1.30.0"
 app_file: app.py
 pinned: false
 license: mit
-short_description: GNN-based book recommendation (LightGCN) on a city public library's borrowing data
+short_description: LightGCN book recommendation on library data
 ---
 
 # 📚 圖書館 GNN 推薦系統 Demo
