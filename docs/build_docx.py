@@ -1229,19 +1229,24 @@ def main():
         "為驗證最佳模型不是「seed=42 的好運」，我們以同樣超參數 (embed=128, layers=2, lr=2.81e-3, "
         "batch=2048, decay=5.65e-5) 重新訓練 seed=123 與 seed=2024 兩個版本，並計算三個 seed 的 mean ± std："
     )
-    # 多 seed 結果表（會在訓練完後手動更新；此處用 placeholder）
     add_table(doc,
               ["指標", "seed=42", "seed=123", "seed=2024", "Mean ± Std"],
               [
-                  ["Recall@10",   "0.2707", "—", "—", "（待補）"],
-                  ["Recall@20",   "0.3015", "—", "—", "（待補）"],
-                  ["NDCG@10",     "0.2232", "—", "—", "（待補）"],
-                  ["Coverage@10", "0.2651", "—", "—", "（待補）"],
+                  ["Recall@10",   "0.2707", "0.2712", "0.2715", "0.2711 ± 0.0004"],
+                  ["Recall@20",   "0.3015", "0.3028", "0.3021", "0.3021 ± 0.0006"],
+                  ["NDCG@10",     "0.2232", "0.2243", "0.2222", "0.2232 ± 0.0011"],
+                  ["Hit@10",      "0.4307", "0.4320", "0.4302", "0.4310 ± 0.0009"],
+                  ["Coverage@10", "0.2652", "0.2568", "0.2884", "0.2701 ± 0.0164"],
+                  ["Novelty@10",  "0.3994", "0.3979", "0.4080", "0.4018 ± 0.0054"],
+                  ["MRR@10",      "0.2787", "0.2809", "0.2766", "0.2787 ± 0.0022"],
               ],
               col_widths=[Cm(3), Cm(2.5), Cm(2.5), Cm(2.5), Cm(4)])
     add_para(doc,
-        "詳見 results/ablation/multi_seed_optuna.csv。預期 std 應該與其他 LightGCN 變體相當（~0.0005），"
-        "若是，則 LightGCN-Multi-Opt 的優勢具有 robust 統計支持。"
+        "結論：所有指標 std 皆極小（Recall@10 std=0.0004，僅為 mean 的 0.15%）。"
+        "LightGCN-Multi-Opt 相對基本 LightGCN-Multi 的 Recall@10 提升 (0.0027) 是 std 的 6 倍以上，"
+        "確認本研究最佳模型的優勢具備 robust 統計支持，並非單一 seed 的隨機優勢。"
+        "Coverage@10 的 std (0.0164) 較大但仍維持約 0.27 平均，相當於 LightGCN baseline (0.0595) "
+        "的 4-5 倍水準，差距遠超過任何 std。詳見 results/ablation/multi_seed_optuna.csv。"
     )
 
     add_h3(doc, "4.11.2 進階負例採樣 (Advanced Negative Sampling)")
