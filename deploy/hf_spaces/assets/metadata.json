@@ -1,0 +1,10 @@
+{
+  "n_users": 35856,
+  "n_items": 29685,
+  "embed_dim": 64,
+  "n_layers": 3,
+  "model": "LightGCN",
+  "model_checkpoint": "lightgcn_best.pt",
+  "n_books_in_bundle": 29685,
+  "build_date": "2026-05-11"
+}

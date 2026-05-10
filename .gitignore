@@ -54,6 +54,14 @@ checkpoints/
 *.h5
 *.pkl
 
+# ===== 部署 bundle 例外（HF Spaces 需要）=====
+# 預計算的 item embeddings + 書本 metadata（無讀者資訊）
+!deploy/hf_spaces/assets/
+!deploy/hf_spaces/assets/*.pt
+!deploy/hf_spaces/assets/*.parquet
+!deploy/hf_spaces/assets/*.json
+!deploy/hf_spaces/assets/*.md
+
 # ===== 結果（可由 visualize.py 重新產生）=====
 results/figures/*
 results/*.csv
