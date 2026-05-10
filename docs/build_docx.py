@@ -1061,9 +1061,42 @@ def main():
     add_centered(doc, "$ python run_all.py", size=11, bold=True, color=DARK)
     add_para(doc,
         "該腳本依序執行 22 個階段，包括：資料前處理、k-core 過濾、4 個 ablation suites、"
-        "11 個模型訓練、統計檢定、公平性分析、視覺化、Word 與 PPT 文件生成。"
+        "16 個模型訓練、統計檢定、公平性分析、視覺化、Word 與 PPT 文件生成。"
         "全程約 3-4 小時。所有亂數種子已固定（seed=42 為主，multi-seed 用 42/123/2024），"
         "在相同硬體環境下結果可完整重現。"
+    )
+
+    add_h3(doc, "4.9.1 評估結果的「partial_metrics」標記說明")
+    add_para(doc,
+        "本研究的實驗紀錄保留兩份檔案：results/summary.csv 為原始指標彙整；"
+        "results/summary_clean.csv 額外加入 status 欄位區分模型完成度："
+    )
+    add_table(doc,
+              ["status 值", "含意", "處理建議"],
+              [
+                  ["complete", "所有 14 個指標欄位皆有值", "可直接引用"],
+                  ["partial_metrics", "至少缺一個指標（早期 checkpoint 評估時未帶 item_pop 參數）", "執行 python -m src.recompute_full_metrics 自動補齊"],
+              ],
+              col_widths=[Cm(3), Cm(7), Cm(6)])
+    add_para(doc,
+        "本研究在最終定稿時，已對所有舊版 checkpoint 重新跑完整評估，"
+        "summary.csv 中 16 個模型皆為 complete 狀態，無 NA 缺值。"
+        "保留此機制是為了學術誠信：缺值就標記、不偽造數字，未來若新增模型亦可被檢測出。"
+    )
+
+    add_h3(doc, "4.9.2 完整測試套件")
+    add_para(doc,
+        "tests/ 目錄下含 34 個 pytest 測試，分為四類："
+    )
+    for t in [
+        "資料切分測試 (test_data_splits.py)：驗證時序切分正確、無 leakage、k-core ≥ 5 過濾、remap 雙射性",
+        "推薦邏輯測試 (test_recommendation_logic.py)：驗證已借過的書不重複推薦、Top-K 排序、Coverage/Novelty/MRR 邊界",
+        "API 端點測試 (test_api_endpoints.py)：FastAPI 全部端點可呼叫且回應符合 schema",
+        "核心元件測試 (test_evaluate.py / test_lightgcn.py / test_metrics_summary.py)：evaluate_topk、LightGCN forward、summary 輔助函數",
+    ]:
+        add_bullet(doc, t)
+    add_para(doc,
+        "執行：python -m pytest（Windows OneDrive 路徑需加 --basetemp 參數，pytest.ini 已設定）。"
     )
 
     add_h2(doc, "4.10 商業應用與市場價值")
