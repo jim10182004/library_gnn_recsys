@@ -368,12 +368,13 @@
         <strong class="text-slate-800">不需要任何輸入</strong>。
       </p>
       <details class="text-sm">
-        <summary class="cursor-pointer text-teal-700 font-medium hover:text-teal-900">⚙️ 內部怎麼運作？</summary>
+        <summary class="cursor-pointer text-teal-700 font-medium hover:text-teal-900">🔍 內部怎麼運作？（白話版）</summary>
         <div class="mt-2 text-slate-600 space-y-1.5 pl-2 border-l-2 border-teal-200">
-          <p>1. 每個 persona 預設了 <strong>4 本「種子書」</strong>（例如「日系推理迷」= 白金數據+嫌疑犯X+解憂雜貨店+死了七次的男人）</p>
-          <p>2. 系統把這 4 本書的 <strong>64 維 embedding 取平均</strong>，得到一張「虛擬讀者身份卡」</p>
-          <p>3. 跟全部 <strong>3 萬本書</strong>算 cosine similarity</p>
-          <p>4. 排序，剔除種子書，回 Top-K</p>
+          <p>1. 每個原型背後**藏了 4 本代表書**（像「日系推理迷」= 白金數據+嫌疑犯X+解憂雜貨店+死了七次的男人）</p>
+          <p>2. 模型從 130 萬筆借閱學到「**每本書都有一張 64 個數字組成的『興趣指紋』**」</p>
+          <p>3. 把這 4 本的指紋**取平均** → 得到一張「假裝是這種讀者」的指紋</p>
+          <p>4. 拿這張平均指紋跟**全館 3 萬本書**比對，找最像的 10 本（不會推薦原本那 4 本）</p>
+          <p class="text-xs text-slate-500 italic pt-1">→ 比喻：4 本書 = 你朋友的興趣標籤；模型 = 紅娘；推薦結果 = 紅娘介紹的對象</p>
         </div>
       </details>
     </div>
@@ -686,22 +687,22 @@
         <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center mb-4">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
         </div>
-        <h3 class="font-bold text-slate-900 mb-2">資料</h3>
-        <p class="text-sm text-slate-600 leading-relaxed">某市立圖書館 2025 年完整年度的 130 萬筆借閱 + 32 萬筆預約紀錄。<br>已去識別化處理。</p>
+        <h3 class="font-bold text-slate-900 mb-2">📚 資料是哪來的？</h3>
+        <p class="text-sm text-slate-600 leading-relaxed">某間市立圖書館 2025 全年的 <b>真實借閱紀錄</b>（130 萬筆借閱 + 32 萬筆預約）。讀者 ID 已替換成匿名編號，<b>沒有姓名、聯絡資訊</b>。</p>
       </div>
       <div class="glass-card rounded-2xl p-6">
         <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center mb-4">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
-        <h3 class="font-bold text-slate-900 mb-2">模型</h3>
-        <p class="text-sm text-slate-600 leading-relaxed"><b>LightGCN</b>（SIGIR 2020 SOTA）為主，建構讀者—書籍二部圖。<br>3 層圖卷積、64 維 embedding。</p>
+        <h3 class="font-bold text-slate-900 mb-2">🧠 模型在做什麼？</h3>
+        <p class="text-sm text-slate-600 leading-relaxed">把每位讀者跟他借過的書 <b>連線</b>，畫成一張超大的網。模型學「跟你借過類似書的人，他們還借了什麼」 — <b>跟 Netflix / YouTube 同一套邏輯</b>，只是換成書。</p>
       </div>
       <div class="glass-card rounded-2xl p-6">
         <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center mb-4">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         </div>
-        <h3 class="font-bold text-slate-900 mb-2">表現</h3>
-        <p class="text-sm text-slate-600 leading-relaxed">與 Popular、ItemCF、BPR-MF、NGCF 等 10 個基線比較。<br><b>LightGCN-Multi</b> Recall@10 = 0.268（最強）。</p>
+        <h3 class="font-bold text-slate-900 mb-2">🎯 推得有多準？</h3>
+        <p class="text-sm text-slate-600 leading-relaxed">用 12 月真實借閱資料測試（模型沒看過）：<b>每 10 本推薦平均 2.7 本是讀者真的會借的</b>。43% 的讀者至少 1 本命中。比「推熱門書」聰明，覆蓋的書多 <b>265 倍</b>。</p>
       </div>
     </div>
 
@@ -719,25 +720,30 @@
     <!-- Recommendation logic -->
     <div class="mt-8 grid md:grid-cols-2 gap-6 items-start">
       <div>
-        <h3 class="font-bold text-slate-900 mb-3">推薦邏輯（這個 demo）</h3>
+        <h3 class="font-bold text-slate-900 mb-3">推薦怎麼算出來？</h3>
         <ol class="space-y-3">
           <li class="flex gap-3">
-            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">1</span>
-            <span class="text-sm text-slate-700">你選一個 persona 或自訂幾本喜歡的書</span>
+            <span class="flex-shrink-0 w-7 h-7 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">1</span>
+            <span class="text-sm text-slate-700"><b>你選書</b>（點 persona 或自訂 3-5 本喜歡的書）</span>
           </li>
           <li class="flex gap-3">
-            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">2</span>
-            <span class="text-sm text-slate-700">系統取這些書的 LightGCN embedding，平均後 L2 normalise</span>
+            <span class="flex-shrink-0 w-7 h-7 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">2</span>
+            <span class="text-sm text-slate-700"><b>取這幾本書的「興趣指紋」平均</b> → 得到一張「假裝是這種讀者」的指紋</span>
           </li>
           <li class="flex gap-3">
-            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">3</span>
-            <span class="text-sm text-slate-700">計算與全部 29,685 本書的 cosine 相似度，回傳 Top-K</span>
+            <span class="flex-shrink-0 w-7 h-7 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">3</span>
+            <span class="text-sm text-slate-700"><b>跟全館 29,685 本書比指紋</b>，找最像的 Top 10</span>
           </li>
         </ol>
+        <p class="text-xs text-slate-500 italic mt-4 pl-1">
+          💡「指紋」= 64 個浮點數，模型訓練時自動學出來的 — 完全沒人為定義，
+          反映「跟誰一起被借」的潛在規律。
+        </p>
       </div>
       <div class="bg-slate-900 rounded-2xl p-6 text-slate-100 text-sm font-mono overflow-x-auto">
+        <div class="text-xs text-slate-400 mb-2">↓ 同件事用程式碼寫只要 3 行</div>
 <pre class="text-xs leading-relaxed">
-<span class="text-teal-400"># 合成讀者推薦</span>
+<span class="text-teal-400"># 合成讀者向量 → 找最像的書</span>
 <span class="text-purple-300">user_vec</span> = item_embs[liked].mean(dim=<span class="text-amber-300">0</span>)
 <span class="text-purple-300">scores</span> = cosine(user_vec, all_items)
 top_k = scores.argsort()[-<span class="text-amber-300">k</span>:]</pre>
@@ -1257,8 +1263,21 @@ function renderCompareResult(data) {
   }
 
   const overlapMsg = data.n_common === 0
-    ? '<div class="bg-blue-50 border border-blue-200 text-blue-700 rounded-xl px-4 py-3 mb-6 text-sm">兩個原型的推薦完全沒有重疊 — 模型清楚區分了不同興趣群體</div>'
-    : `<div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 mb-6 text-sm">兩個原型的推薦有 <b>${data.n_common}</b> 本重疊（已標黃色框）— 代表跨族群都會借的「通用熱門書」</div>`;
+    ? `<div class="bg-blue-50 border border-blue-200 text-blue-800 rounded-xl px-4 py-3 mb-6 text-sm">
+         <div class="font-semibold mb-1">✨ 兩個原型的推薦完全沒有重疊（0/${data.a.recommendations.length}）</div>
+         <div class="text-xs leading-relaxed">
+           這代表模型把這兩種讀者群<b>清楚分到不同區域</b> — 是「個人化做得好」的證據。
+           （對照組：如果用「推熱門書」的笨方法，會 10 本全部重疊）
+           <br>💡 想看到重疊？把 Top 拉到 30+，相關興趣的 persona（例如「自我成長」vs「哲學」）會開始出現「通用書」。
+         </div>
+       </div>`
+    : `<div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 mb-6 text-sm">
+         <div class="font-semibold mb-1">🔶 兩個原型的推薦有 ${data.n_common} 本重疊</div>
+         <div class="text-xs leading-relaxed">
+           黃框標出的是兩邊都會被推薦的書 — 通常是「跨族群都會借的通用書」，
+           或是這兩個 persona 興趣有重疊（不是 bug，是模型抓到了真正的相關性）。
+         </div>
+       </div>`;
 
   c.innerHTML = overlapMsg + `
     <div class="grid lg:grid-cols-2 gap-5">
