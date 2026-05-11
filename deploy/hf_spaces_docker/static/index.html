@@ -686,44 +686,96 @@ function switchTab(t) {
 }
 
 // ============== Helpers ==============
-const coverCache = new Map();  // isbn -> url 或 null
+const coverCache = new Map();  // key (isbn|title) -> url 或 null
 
-async function fetchCover(isbn) {
-  if (!isbn) return null;
-  if (coverCache.has(isbn)) return coverCache.get(isbn);
+function imgLoadable(url, timeoutMs = 4000) {
+  return new Promise(res => {
+    const img = new Image();
+    let done = false;
+    const finish = ok => { if (!done) { done = true; res(ok); } };
+    img.onload = () => finish(img.naturalWidth > 1);
+    img.onerror = () => finish(false);
+    img.src = url;
+    setTimeout(() => finish(false), timeoutMs);
+  });
+}
+
+async function fetchCover(item) {
+  const key = item.isbn || `t:${item.title}|${item.author}`;
+  if (coverCache.has(key)) return coverCache.get(key);
   try {
-    // 先試 Open Library（單純圖片，快）
-    const ol = `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg?default=false`;
-    // 用 Image 物件偵測載入
-    const olOk = await new Promise(res => {
-      const img = new Image();
-      img.onload = () => res(img.naturalWidth > 1);
-      img.onerror = () => res(false);
-      img.src = ol;
-    });
-    if (olOk) { coverCache.set(isbn, ol); return ol; }
-    // fallback: Google Books JSON API
-    const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&fields=items(volumeInfo/imageLinks)`);
-    const data = await r.json();
-    let url = data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail || null;
-    if (url) url = url.replace('http://', 'https://');
-    coverCache.set(isbn, url);
-    return url;
-  } catch {
-    coverCache.set(isbn, null);
-    return null;
-  }
+    // 1. Open Library (英文書比較有)
+    if (item.isbn) {
+      const ol = `https://covers.openlibrary.org/b/isbn/${item.isbn}-M.jpg?default=false`;
+      if (await imgLoadable(ol)) { coverCache.set(key, ol); return ol; }
+    }
+    // 2. Google Books by ISBN（中文書這個比 Open Library 強）
+    if (item.isbn) {
+      const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${item.isbn}&fields=items(volumeInfo/imageLinks)`);
+      const data = await r.json();
+      let url = data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
+      if (url) {
+        url = url.replace('http://', 'https://').replace('&edge=curl', '');
+        if (await imgLoadable(url)) { coverCache.set(key, url); return url; }
+      }
+    }
+    // 3. Google Books by title+author（沒 ISBN 或上面失敗時的最後嘗試）
+    const q = encodeURIComponent(`intitle:${(item.title || '').slice(0,40)} ${(item.author || '').split(/[;,\s]/)[0].slice(0,15)}`);
+    const r2 = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&fields=items(volumeInfo/imageLinks)`);
+    const d2 = await r2.json();
+    let u2 = d2.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
+    if (u2) {
+      u2 = u2.replace('http://', 'https://').replace('&edge=curl', '');
+      if (await imgLoadable(u2)) { coverCache.set(key, u2); return u2; }
+    }
+  } catch {}
+  coverCache.set(key, null);
+  return null;
+}
+
+function generatedCoverSVG(item, w = 56, h = 80) {
+  // 沒真實 cover 時 — 產生一張帶設計感的 SVG「假」封面
+  const cat_color = item.cat_color || '#475569';
+  const title = (item.title || '?').trim();
+  const initial = title.slice(0, 1);  // 第 1 個字（中文也行）
+  const subtitle = title.slice(1, 8);  // 接下來幾個字當小字
+  // 從 cat_color 取深色當背景，淺色當文字
+  const dark = cat_color;
+  // 生成 SVG，inline 嵌入
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice"
+         style="width:100%;height:100%;display:block;border-radius:0.375rem;">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="${dark}" stop-opacity="0.85"/>
+          <stop offset="100%" stop-color="${dark}" stop-opacity="0.55"/>
+        </linearGradient>
+      </defs>
+      <rect width="${w}" height="${h}" fill="url(#g)"/>
+      <line x1="3" y1="${h-12}" x2="${w-3}" y2="${h-12}" stroke="white" stroke-opacity="0.4" stroke-width="0.5"/>
+      <text x="${w/2}" y="${h*0.45}" font-size="${Math.min(w,h)*0.42}" fill="white" text-anchor="middle"
+            font-family="-apple-system,'PingFang TC','Microsoft JhengHei',sans-serif" font-weight="700">${escapeXml(initial)}</text>
+      <text x="${w/2}" y="${h-4}" font-size="6" fill="white" fill-opacity="0.85" text-anchor="middle"
+            font-family="-apple-system,'PingFang TC','Microsoft JhengHei',sans-serif">${escapeXml(subtitle.slice(0,6))}</text>
+    </svg>`;
+  return svg;
+}
+
+function escapeXml(s) {
+  return String(s || '').replace(/[<>&'"]/g, c => ({
+    '<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'
+  }[c]));
 }
 
 function lazyLoadCovers(scope) {
-  // scope 是包含 .cover-slot 的 root element
-  scope.querySelectorAll('.cover-slot[data-isbn]').forEach(async slot => {
-    const isbn = slot.dataset.isbn;
-    if (!isbn) return;
-    const url = await fetchCover(isbn);
+  scope.querySelectorAll('.cover-slot[data-coverkey]').forEach(async slot => {
+    const item = JSON.parse(slot.dataset.coverkey || '{}');
+    const url = await fetchCover(item);
     if (url) {
-      slot.innerHTML = `<img src="${url}" class="w-full h-full object-cover rounded-md" alt="cover" loading="lazy">`;
+      slot.innerHTML = `<img src="${url}" class="w-full h-full object-cover rounded-md" alt="cover" loading="lazy"
+                            onerror="this.parentElement.innerHTML=this.dataset.fb;" data-fb='${generatedCoverSVG(item).replace(/'/g, '&#39;')}'>`;
     }
+    // 沒找到就留 SVG 預設（一開始就 render 好了）
   });
 }
 
@@ -741,7 +793,14 @@ function bookCard(item, opts = {}) {
   const scoreText = opts.score !== undefined ? `<span class="text-xs text-teal-700 font-semibold">${item.score.toFixed(3)}</span>` : '';
   const why = item.why ? `<div class="mt-1.5 text-[10px] inline-flex items-center gap-1 px-1.5 py-0.5 rounded" style="background:${item.why.color}15; color:${item.why.color}">▸ ${item.why.short}</div>` : '';
   const isHighlight = opts.highlight;
-  const cover = `<div class="cover-slot flex-shrink-0 w-14 h-20 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-300 text-base overflow-hidden" data-isbn="${item.isbn || ''}">${item.isbn ? '📖' : '—'}</div>`;
+  const coverItem = JSON.stringify({
+    isbn: item.isbn || '',
+    title: item.title || '',
+    author: item.author || '',
+    cat_color: item.cat_color || '#475569',
+  }).replace(/'/g, '&#39;');
+  // 一開始就 render SVG 預設封面（看起來有設計感）；lazyLoadCovers 之後若抓到真實圖會替換
+  const cover = `<div class="cover-slot flex-shrink-0 w-14 h-20 rounded-lg overflow-hidden shadow-sm" data-coverkey='${coverItem}'>${generatedCoverSVG(item)}</div>`;
   return `
     <div class="book-card border ${isHighlight ? 'border-amber-400 bg-amber-50' : 'border-slate-200'} rounded-xl p-3 flex items-start gap-3 fade-in">
       ${rank}
