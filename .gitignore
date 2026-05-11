@@ -61,6 +61,11 @@ checkpoints/
 !deploy/hf_spaces/assets/*.parquet
 !deploy/hf_spaces/assets/*.json
 !deploy/hf_spaces/assets/*.md
+!deploy/hf_spaces_docker/assets/
+!deploy/hf_spaces_docker/assets/*.pt
+!deploy/hf_spaces_docker/assets/*.parquet
+!deploy/hf_spaces_docker/assets/*.json
+!deploy/hf_spaces_docker/assets/*.md
 
 # ===== 結果（可由 visualize.py 重新產生）=====
 results/figures/*
