@@ -277,6 +277,7 @@
       </div>
     </div>
     <div class="hidden md:flex items-center gap-1">
+      <a href="#how" class="tab-pill">怎麼玩</a>
       <a href="#try" class="tab-pill">試試看</a>
       <a href="#analytics" class="tab-pill">分析</a>
       <a href="#about" class="tab-pill">關於</a>
@@ -341,24 +342,152 @@
   </div>
 </header>
 
-<!-- ============== How it works ============== -->
-<section class="max-w-6xl mx-auto px-6 py-16">
-  <div class="grid md:grid-cols-3 gap-6">
-    <div class="text-center">
-      <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg">1</div>
-      <h3 class="font-bold text-slate-900 mb-1">選讀者類型</h3>
-      <p class="text-sm text-slate-600">挑一個預設的人物原型，或自己組合喜歡的書</p>
+<!-- ============== How it works (詳細版) ============== -->
+<section id="how" class="max-w-6xl mx-auto px-6 py-16">
+  <div class="text-center mb-10">
+    <div class="text-xs uppercase tracking-wider text-teal-700 font-semibold mb-2">How to use</div>
+    <h2 class="font-display text-3xl md:text-4xl font-bold text-slate-900">怎麼玩這個 demo？</h2>
+    <p class="text-slate-600 mt-3 max-w-2xl mx-auto">
+      點開下面任一個 mode 看詳細說明，或<a href="#try" class="text-teal-700 font-semibold underline">直接跳到 demo 開始試</a>。
+    </p>
+  </div>
+
+  <!-- 三大 mode 並排 -->
+  <div class="grid md:grid-cols-3 gap-5 mb-10">
+    <!-- Mode 1: Persona -->
+    <div class="glass-card rounded-2xl p-6 hover:shadow-lg transition">
+      <div class="flex items-start gap-3 mb-3">
+        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl flex-shrink-0">🎭</div>
+        <div>
+          <h3 class="font-bold text-slate-900">11 種人物原型</h3>
+          <p class="text-xs text-slate-500">最簡單的玩法</p>
+        </div>
+      </div>
+      <p class="text-sm text-slate-600 mb-3">
+        點任一個 emoji 卡（如「日系推理迷 🔍」），系統立刻給推薦。
+        <strong class="text-slate-800">不需要任何輸入</strong>。
+      </p>
+      <details class="text-sm">
+        <summary class="cursor-pointer text-teal-700 font-medium hover:text-teal-900">⚙️ 內部怎麼運作？</summary>
+        <div class="mt-2 text-slate-600 space-y-1.5 pl-2 border-l-2 border-teal-200">
+          <p>1. 每個 persona 預設了 <strong>4 本「種子書」</strong>（例如「日系推理迷」= 白金數據+嫌疑犯X+解憂雜貨店+死了七次的男人）</p>
+          <p>2. 系統把這 4 本書的 <strong>64 維 embedding 取平均</strong>，得到一張「虛擬讀者身份卡」</p>
+          <p>3. 跟全部 <strong>3 萬本書</strong>算 cosine similarity</p>
+          <p>4. 排序，剔除種子書，回 Top-K</p>
+        </div>
+      </details>
     </div>
-    <div class="text-center">
-      <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg">2</div>
-      <h3 class="font-bold text-slate-900 mb-1">模型即時推薦</h3>
-      <p class="text-sm text-slate-600">LightGCN 將你的書本轉為向量，找出最相似的書</p>
+
+    <!-- Mode 2: Custom -->
+    <div class="glass-card rounded-2xl p-6 hover:shadow-lg transition">
+      <div class="flex items-start gap-3 mb-3">
+        <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center text-xl flex-shrink-0">✏️</div>
+        <div>
+          <h3 class="font-bold text-slate-900">新讀者引導 (Cold-start)</h3>
+          <p class="text-xs text-slate-500">3 步驟個人化</p>
+        </div>
+      </div>
+      <p class="text-sm text-slate-600 mb-3">
+        搜尋你看過、喜歡的 <strong class="text-slate-800">3-5 本書</strong> →
+        加入 → 按「產生推薦」。
+      </p>
+      <details class="text-sm">
+        <summary class="cursor-pointer text-teal-700 font-medium hover:text-teal-900">⚙️ 為什麼要選 3-5 本？</summary>
+        <div class="mt-2 text-slate-600 space-y-1.5 pl-2 border-l-2 border-teal-200">
+          <p>• <strong>1-2 本</strong>：訊號太弱，virtual user vector 容易偏</p>
+          <p>• <strong>3-5 本</strong>：剛好——能反映你的口味又不失多樣</p>
+          <p>• <strong>5+ 本</strong>：每多一本邊際遞減，但會更穩定</p>
+          <p class="text-xs text-slate-500 pt-1">推薦結果中按「+ 我也借過」可即時加入並重算</p>
+        </div>
+      </details>
     </div>
-    <div class="text-center">
-      <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg">3</div>
-      <h3 class="font-bold text-slate-900 mb-1">看到 Top-K 書單</h3>
-      <p class="text-sm text-slate-600">含分類顏色、相似度分數，並有分類分布視覺化</p>
+
+    <!-- Mode 3: Compare -->
+    <div class="glass-card rounded-2xl p-6 hover:shadow-lg transition">
+      <div class="flex items-start gap-3 mb-3">
+        <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-xl flex-shrink-0">🆚</div>
+        <div>
+          <h3 class="font-bold text-slate-900">比較兩個原型</h3>
+          <p class="text-xs text-slate-500">展示模型區分能力</p>
+        </div>
+      </div>
+      <p class="text-sm text-slate-600 mb-3">
+        左右各選一個 persona → 並排顯示推薦書單。
+        重疊的書會被 <span class="inline-block px-1.5 py-0.5 rounded text-xs bg-amber-100 text-amber-700 border border-amber-300 font-semibold">黃框</span> 標出。
+      </p>
+      <details class="text-sm">
+        <summary class="cursor-pointer text-teal-700 font-medium hover:text-teal-900">⚙️ 觀察重點</summary>
+        <div class="mt-2 text-slate-600 space-y-1.5 pl-2 border-l-2 border-teal-200">
+          <p>• 「兒童英文 vs 日系推理」→ 預期 <strong>0 重疊</strong>，證明模型能精準區分</p>
+          <p>• 「程式設計師 vs 學術派」→ 預期 <strong>2-3 本重疊</strong>，反映兩群人都讀數學/演算法</p>
+          <p>• 重疊書數越接近 0 = 模型區分力越強；越接近 K = 兩 persona 興趣重疊</p>
+        </div>
+      </details>
     </div>
+  </div>
+
+  <!-- 進階功能：toggle + badge -->
+  <div class="glass-card rounded-2xl p-6 bg-gradient-to-br from-slate-50 to-white">
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xl">🔒</span>
+          <h3 class="font-bold text-slate-900">「嚴格同類別」Toggle</h3>
+        </div>
+        <p class="text-sm text-slate-600 mb-3">
+          推薦書單標題旁的開關，控制是否強制同類別優先：
+        </p>
+        <div class="space-y-2 text-sm">
+          <div class="flex items-start gap-2">
+            <span class="inline-block w-7 h-3.5 bg-slate-300 rounded-full flex-shrink-0 mt-1 relative">
+              <span class="absolute left-0.5 top-0.5 w-2.5 h-2.5 bg-white rounded-full"></span>
+            </span>
+            <span class="text-slate-600">
+              <strong class="text-slate-800">關閉（預設）</strong>：純 LightGCN 行為訊號 — 可能跨類別
+              （例：程式書 → 月老）。展示 GNN 能找隱藏興趣。
+            </span>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="inline-block w-7 h-3.5 bg-teal-600 rounded-full flex-shrink-0 mt-1 relative">
+              <span class="absolute right-0.5 top-0.5 w-2.5 h-2.5 bg-white rounded-full"></span>
+            </span>
+            <span class="text-slate-600">
+              <strong class="text-slate-800">開啟</strong>：同類別 +0.15 分、異類 -0.05 分
+              → 全部優先同類書（例：程式書 → 全部科學/應科）。
+            </span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xl">💬</span>
+          <h3 class="font-bold text-slate-900">「為什麼推薦」彩色 badge</h3>
+        </div>
+        <p class="text-sm text-slate-600 mb-3">
+          每本推薦書下方有一個 badge 解釋推薦理由：
+        </p>
+        <div class="space-y-1.5 text-sm">
+          <div class="flex items-center gap-2">
+            <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium" style="background:#7c3aed20; color:#7c3aed">▸ 作者相同：東野圭吾</span>
+            <span class="text-xs text-slate-500">最強信號</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium" style="background:#10b98120; color:#10b981">▸ 同類別：語文文學（3 本）</span>
+            <span class="text-xs text-slate-500">中度信號</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium" style="background:#3b82f620; color:#3b82f6">▸ 相似讀者群也借</span>
+            <span class="text-xs text-slate-500">純協同過濾</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 隱私聲明 -->
+  <div class="mt-6 text-center text-sm text-slate-500">
+    🔒 本 demo <strong>不含任何讀者資訊</strong>（無 ID、無借閱史、無 demographics）。詳見
+    <a href="https://github.com/jim10182004/library_gnn_recsys/blob/main/DATA_CARD.md" class="text-teal-700 hover:underline">DATA_CARD</a>。
   </div>
 </section>
 
