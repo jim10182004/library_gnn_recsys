@@ -411,11 +411,29 @@ def compare_personas(a: str = Query(...), b: str = Query(...), k: int = 10):
         raise HTTPException(404, "無法為 persona 建立推薦")
     overlap_ids = set(r["book_id"] for r in ra["recommendations"]) & \
                   set(r["book_id"] for r in rb["recommendations"])
+    pa, pb = PERSONAS[a], PERSONAS[b]
     return {
-        "a": {"key": a, "name": PERSONAS[a]["name"], **ra},
-        "b": {"key": b, "name": PERSONAS[b]["name"], **rb},
-        "overlap_count": len(overlap_ids),
-        "overlap_book_ids": list(overlap_ids),
+        # 雙重鍵名讓新舊版前端都能正常運作
+        "a": {
+            "key": a,
+            "persona_name": pa["name"],
+            "persona_emoji": pa["emoji"],
+            "persona_color": pa.get("color", "#475569"),
+            "name": pa["name"],
+            **ra,
+        },
+        "b": {
+            "key": b,
+            "persona_name": pb["name"],
+            "persona_emoji": pb["emoji"],
+            "persona_color": pb.get("color", "#475569"),
+            "name": pb["name"],
+            **rb,
+        },
+        "n_common": len(overlap_ids),           # JS 用
+        "common_book_ids": list(overlap_ids),    # JS 用
+        "overlap_count": len(overlap_ids),       # alias 保留
+        "overlap_book_ids": list(overlap_ids),   # alias 保留
     }
 
 
