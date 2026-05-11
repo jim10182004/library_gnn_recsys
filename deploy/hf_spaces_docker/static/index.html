@@ -465,24 +465,95 @@
           <h3 class="font-bold text-slate-900">「為什麼推薦」彩色 badge</h3>
         </div>
         <p class="text-sm text-slate-600 mb-3">
-          每本推薦書下方有一個 badge 解釋推薦理由：
+          每本推薦書下方有一個 badge 解釋推薦理由（按信號強度排序）：
         </p>
         <div class="space-y-1.5 text-sm">
           <div class="flex items-center gap-2">
             <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium" style="background:#7c3aed20; color:#7c3aed">▸ 作者相同：東野圭吾</span>
-            <span class="text-xs text-slate-500">最強信號</span>
+            <span class="text-xs text-slate-500">紫 = 最強信號</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium" style="background:#10b98120; color:#10b981">▸ 同類別：語文文學（3 本）</span>
-            <span class="text-xs text-slate-500">中度信號</span>
+            <span class="text-xs text-slate-500">綠 = 中度</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium" style="background:#3b82f620; color:#3b82f6">▸ 相似讀者群也借</span>
-            <span class="text-xs text-slate-500">純協同過濾</span>
+            <span class="text-xs text-slate-500">藍 = GNN 隱藏規律 ⭐</span>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- 進階：3 種推薦理由的差別 + 「相似讀者群」是什麼 -->
+    <details class="mt-5 border-t border-slate-200 pt-5">
+      <summary class="cursor-pointer text-teal-700 font-semibold hover:text-teal-900 select-none">
+        🤔 「相似讀者群」是怎麼算的？跟「同類別」差在哪？
+      </summary>
+      <div class="mt-4 grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 class="font-bold text-slate-900 mb-2 text-sm">3 種推薦理由的本質差別</h4>
+          <table class="w-full text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-left">
+                <th class="py-1.5 pr-2">類型</th>
+                <th class="py-1.5 pr-2">怎麼判斷？</th>
+                <th class="py-1.5">需要 GNN 嗎？</th>
+              </tr>
+            </thead>
+            <tbody class="text-slate-600">
+              <tr class="border-b border-slate-100">
+                <td class="py-1.5 pr-2"><span class="inline-block px-1.5 py-0.5 rounded text-[10px]" style="background:#7c3aed20;color:#7c3aed">作者相同</span></td>
+                <td class="py-1.5 pr-2">純看書名後面「作者欄位」</td>
+                <td class="py-1.5">❌ 不用</td>
+              </tr>
+              <tr class="border-b border-slate-100">
+                <td class="py-1.5 pr-2"><span class="inline-block px-1.5 py-0.5 rounded text-[10px]" style="background:#10b98120;color:#10b981">同類別</span></td>
+                <td class="py-1.5 pr-2">純看圖書館分類號（中圖法）</td>
+                <td class="py-1.5">❌ 不用</td>
+              </tr>
+              <tr>
+                <td class="py-1.5 pr-2"><span class="inline-block px-1.5 py-0.5 rounded text-[10px]" style="background:#3b82f620;color:#3b82f6">相似讀者群</span></td>
+                <td class="py-1.5 pr-2">模型從 130 萬借閱學到的<b>隱藏規律</b></td>
+                <td class="py-1.5">✅ <b>核心價值</b></td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="text-xs text-slate-500 mt-3 leading-relaxed">
+            前兩個傳統圖書館系統就做得到；<b>第三個是 GNN 才能算出來的</b> —
+            它能找出「人類想不到的隱藏關聯」（例如：「程式設計師也常借九把刀的小說」）。
+          </p>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-slate-900 mb-2 text-sm">「相似讀者」= 借書習慣像</h4>
+          <p class="text-xs text-slate-600 mb-2 leading-relaxed">
+            模型<b>不看</b>性別、年齡、職業（這些都不知道）；只看<b>你借過哪些書</b>。
+          </p>
+          <div class="bg-slate-50 rounded-lg p-3 text-xs space-y-1">
+            <div><b>讀者 A 借過</b>：哈利波特、福爾摩斯、解憂雜貨店</div>
+            <div class="pl-4 border-l-2 border-emerald-400">
+              讀者 B 借過：<u>哈利波特</u>、<u>福爾摩斯</u>、魔戒 → <b class="text-emerald-700">很像</b> ✓
+            </div>
+            <div class="pl-4 border-l-2 border-amber-400">
+              讀者 C 借過：<u>哈利波特</u>、料理東西軍 → 中（重疊 1 本）
+            </div>
+            <div class="pl-4 border-l-2 border-rose-300">
+              讀者 D 借過：微積分、線性代數 → 不像（完全沒重疊）
+            </div>
+          </div>
+          <p class="text-xs text-slate-500 mt-3 leading-relaxed">
+            <b>GNN 的特殊招</b>：3 層卷積讓模型不只看「直接借過同一本書的人」，
+            還能透過<b>「鄰居的鄰居」</b>找間接相關 —
+            例如「跟你像的人借過 X，X 的另一本書也許你也會喜歡」。
+          </p>
+        </div>
+      </div>
+
+      <p class="text-center text-xs text-slate-500 italic mt-4">
+        這是 LightGCN 比 ItemCF / BPR-MF 強的地方 —
+        傳統方法只會「借過 A 的人也借 B」（1 度關係），GNN 能挖到 3 度關係。
+      </p>
+    </details>
   </div>
 
   <!-- 隱私聲明 -->
