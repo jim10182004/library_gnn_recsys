@@ -1,17 +1,27 @@
-# 圖書館借閱資料 GNN 推薦系統
+# 📚 圖書館借閱資料 GNN 推薦系統
 
 > 基於 **LightGCN** 的個人化書籍推薦系統，
 > 在某市立圖書館 **130 萬筆**真實借閱資料上，
 > 透過 **Optuna 自動調參**達到 R@20 = 0.302、Coverage = 26.5%。
 
-[![Live Demo](https://img.shields.io/badge/🤗_Live_Demo-HF_Spaces-yellow)](https://huggingface.co/spaces/Jim20041018/library-gnn-demo)
+[![Live Demo](https://img.shields.io/badge/🤗_Live_Demo-點此互動-yellow?style=for-the-badge)](https://jim20041018-library-gnn-demo.hf.space/)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange)](https://pytorch.org)
 [![LightGCN](https://img.shields.io/badge/Model-LightGCN-9cf)](https://arxiv.org/abs/2002.02126)
-[![Tests](https://img.shields.io/badge/tests-35_passed%2C_1_skipped-green)](#-測試)
+[![Tests](https://img.shields.io/badge/tests-34_passed-green)](#-測試)
 [![License](https://img.shields.io/badge/license-Academic-lightgrey)](#-授權)
 
-> 🚀 **線上 demo**：https://huggingface.co/spaces/Jim20041018/library-gnn-demo
+## 🌐 線上 Demo
+
+**直接玩** → **[https://jim20041018-library-gnn-demo.hf.space/](https://jim20041018-library-gnn-demo.hf.space/)** （FastAPI + Tailwind UI，~17 ms 推薦延遲）
+
+**HF Spaces 頁面**（含原始碼、build logs） → [huggingface.co/spaces/Jim20041018/library-gnn-demo](https://huggingface.co/spaces/Jim20041018/library-gnn-demo)
+
+### 你能玩什麼
+- 🎭 **11 個 Persona**：點即看模型推薦
+- ✏️ **自訂模式**：輸入 3-5 本看過的書 → 即時推薦
+- 🆚 **比較模式**：兩個 persona 並排 + 重疊書黃框標出
+- 🔒 **嚴格同類別 toggle**：切換「模型純行為」vs「同類別優先」
 
 ---
 
