@@ -498,15 +498,28 @@
               <div class="text-xs uppercase tracking-wider text-teal-700 font-semibold">LightGCN 預測</div>
               <h3 class="font-bold text-slate-900">推薦書單</h3>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-slate-500">Top</span>
-              <select id="k-select" class="bg-slate-100 border-0 rounded-lg px-3 py-1 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500">
-                <option value="5">5</option>
-                <option value="10" selected>10</option>
-                <option value="15">15</option>
-                <option value="20">20</option>
-                <option value="30">30</option>
-              </select>
+            <div class="flex items-center gap-3 flex-wrap justify-end">
+              <!-- MMR rerank toggle -->
+              <label class="flex items-center gap-2 cursor-pointer select-none" title="開啟時：每類別最多 6 本、同作者最多 3 本，強迫多樣性
+關閉時：純 LightGCN 分數排序（可能跨類別）">
+                <span class="text-xs text-slate-600 font-medium">嚴格同類別</span>
+                <span class="relative inline-flex items-center">
+                  <input id="rerank-toggle" type="checkbox" class="sr-only peer">
+                  <span class="w-10 h-5 bg-slate-300 rounded-full peer-checked:bg-teal-600 transition-colors duration-200"></span>
+                  <span class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm peer-checked:translate-x-5 transition-transform duration-200"></span>
+                </span>
+                <svg id="rerank-info" class="w-3.5 h-3.5 text-slate-400 hover:text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </label>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500">Top</span>
+                <select id="k-select" class="bg-slate-100 border-0 rounded-lg px-3 py-1 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500">
+                  <option value="5">5</option>
+                  <option value="10" selected>10</option>
+                  <option value="15">15</option>
+                  <option value="20">20</option>
+                  <option value="30">30</option>
+                </select>
+              </div>
             </div>
           </div>
           <div id="rec-list" class="space-y-2"></div>
@@ -851,14 +864,43 @@ function getK() {
   return el ? parseInt(el.value) : 10;
 }
 
-// 監聽 k-select 變化 → 自動重跑推薦
-document.getElementById('k-select').addEventListener('change', () => {
+function isRerank() {
+  const el = document.getElementById('rerank-toggle');
+  return el ? el.checked : false;
+}
+
+function rerunCurrent() {
   if (currentMode === 'persona' && currentPersonaKey) {
     loadPersona(currentPersonaKey, getK());
   } else if (currentMode === 'custom' && selected.size > 0) {
     runCustomRecommend();
   }
+}
+
+// 監聽 k-select / rerank-toggle 變化 → 自動重跑推薦
+document.getElementById('k-select').addEventListener('change', rerunCurrent);
+document.getElementById('rerank-toggle').addEventListener('change', () => {
+  // 提示 1 秒鐘解釋切換意義
+  const t = document.getElementById('rerank-toggle').checked;
+  showRerankHint(t);
+  rerunCurrent();
 });
+
+function showRerankHint(on) {
+  let n = document.getElementById('rerank-hint');
+  if (!n) {
+    n = document.createElement('div');
+    n.id = 'rerank-hint';
+    n.className = 'fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm fade-in';
+    document.body.appendChild(n);
+  }
+  n.style.background = on ? '#0d9488' : '#475569';
+  n.style.color = 'white';
+  n.innerHTML = on
+    ? '🔒 嚴格同類別模式：每類最多 6 本、同作者最多 3 本'
+    : '🔓 純模型排序：可能跨類別（GNN 找到的隱藏興趣）';
+  setTimeout(() => { n && n.remove(); }, 2400);
+}
 
 // ============== Personas ==============
 async function loadPersonas() {
@@ -895,7 +937,7 @@ async function loadPersonas() {
 async function loadPersona(key, k) {
   showLoading(true);
   try {
-    const r = await fetch(`${API_BASE}/api/persona/${key}?k=${k}`);
+    const r = await fetch(`${API_BASE}/api/persona/${key}?k=${k}&rerank=${isRerank()}`);
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
       throw new Error(err.detail || `HTTP ${r.status}`);
@@ -995,7 +1037,7 @@ async function runCustomRecommend() {
   try {
     const r = await fetch(`${API_BASE}/api/recommend`, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ book_ids: Array.from(selected.keys()), k: getK() }),
+      body: JSON.stringify({ book_ids: Array.from(selected.keys()), k: getK(), rerank: isRerank() }),
     });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));

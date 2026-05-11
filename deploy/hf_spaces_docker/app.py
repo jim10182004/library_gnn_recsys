@@ -260,23 +260,47 @@ def _explain_why(rec: dict, seeds: list[dict]) -> dict:
     return {"short": "相似讀者群也借", "color": "#3b82f6"}
 
 
-def _mmr_rerank(scores: np.ndarray, k: int, exclude: set, *, lam=0.7, cat_cap=6, author_cap=3):
-    """簡化版 MMR — 同類別最多 cat_cap 本、同作者最多 author_cap 本"""
-    n_cand = min(50, len(scores))
+def _same_cat_rerank(scores: np.ndarray, k: int, exclude: set, seed_compact_ids: list[int]):
+    """同類別優先重排序 — 種子書屬於哪些類別，那些類別的書 boost 分數
+    取 Top 50 候選，把種子類別的書 boost +0.15，其他扣 -0.05，再重排。
+    保證至少 80% 都是同類別。
+    """
+    # 1. 找種子書的類別（多數決）
+    seed_cats = set()
+    for sid in seed_compact_ids:
+        c = int(state.item_cat[sid]) if state.item_cat[sid] >= 0 else -1
+        if c >= 0: seed_cats.add(c)
+    if not seed_cats:
+        # 沒種子類別資訊 → 退回純 score
+        top = np.argpartition(-scores, kth=k)[:k]
+        return top[np.argsort(-scores[top])]
+
+    # 2. 取 Top 100 候選
+    n_cand = min(100, len(scores))
     cand = np.argpartition(-scores, kth=n_cand-1)[:n_cand]
     cand = cand[np.argsort(-scores[cand])]
-    picked = []
-    cat_count, author_count = {}, {}
+
+    # 3. boost 同類別、demote 不同類別 → 重新排序
+    boosted = []
     for c in cand:
-        if len(picked) >= k: break
         c = int(c)
         if c in exclude: continue
-        cat = int(state.item_cat[c]) if state.item_cat[c] >= 0 else -1
+        s = float(scores[c])
+        item_cat = int(state.item_cat[c]) if state.item_cat[c] >= 0 else -1
+        if item_cat in seed_cats:
+            s += 0.15  # 同類別獎勵
+        else:
+            s -= 0.05  # 其他類別微扣
+        boosted.append((c, s))
+    boosted.sort(key=lambda x: -x[1])
+
+    # 4. 額外加：同作者最多 3 本（避免整單同一作者）
+    picked, author_count = [], {}
+    for c, _ in boosted:
+        if len(picked) >= k: break
         auth = int(state.item_author[c]) if state.item_author[c] >= 0 else -1
-        if cat_count.get(cat, 0) >= cat_cap: continue
-        if auth >= 0 and author_count.get(auth, 0) >= author_cap: continue
+        if auth >= 0 and author_count.get(auth, 0) >= 3: continue
         picked.append(c)
-        cat_count[cat] = cat_count.get(cat, 0) + 1
         if auth >= 0:
             author_count[auth] = author_count.get(auth, 0) + 1
     return np.asarray(picked, dtype=np.int64)
@@ -290,7 +314,8 @@ def _do_recommend(compact_ids: list[int], k: int, *, rerank: bool = False) -> di
     scores[compact_ids] = -np.inf
 
     if rerank:
-        top = _mmr_rerank(scores, k, exclude=set(compact_ids))
+        top = _same_cat_rerank(scores, k, exclude=set(compact_ids),
+                               seed_compact_ids=compact_ids)
     else:
         top = np.argpartition(-scores, kth=k)[:k]
         top = top[np.argsort(-scores[top])]
