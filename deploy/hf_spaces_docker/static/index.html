@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>圖書館 GNN 推薦系統 | LightGCN Demo</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --teal-50: #f0fdfa; --teal-100: #ccfbf1; --teal-300: #5eead4; --teal-400: #2dd4bf;
+    --teal-500: #14b8a6; --teal-600: #0d9488; --teal-700: #0f766e; --teal-800: #115e59;
+    --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1; --slate-500: #64748b; --slate-600: #475569;
+    --slate-700: #334155; --slate-800: #1e293b; --slate-900: #0f172a;
+    --shadow-sm: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+    --shadow-md: 0 4px 14px -2px rgba(15,23,42,0.1), 0 2px 6px -2px rgba(15,23,42,0.05);
+    --shadow-lg: 0 12px 28px -8px rgba(15,23,42,0.18), 0 4px 12px -4px rgba(15,23,42,0.08);
+    --shadow-glow: 0 0 0 1px rgba(20,184,166,0.2), 0 8px 24px -6px rgba(20,184,166,0.4);
+  }
+  * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body { font-family: 'Noto Sans TC', 'Inter', sans-serif; color: #0f172a;
+    background: linear-gradient(180deg, #fafbfc 0%, #f0fdfa 100%); min-height: 100vh; }
+  .font-display { font-family: 'Inter', 'Noto Sans TC', sans-serif; letter-spacing: -0.025em; font-weight: 800; }
+
+  /* ============ Hero with animated mesh gradient ============ */
+  .hero-bg {
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 30%, #14b8a6 65%, #5eead4 100%);
+    position: relative; overflow: hidden;
+  }
+  .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.55;
+    will-change: transform; animation: blob 18s ease-in-out infinite; }
+  .blob.b1 { width: 500px; height: 500px; background: #5eead4; top: -150px; right: -100px; animation-delay: 0s; }
+  .blob.b2 { width: 380px; height: 380px; background: #0e7490; bottom: -120px; left: 15%; animation-delay: -6s; }
+  .blob.b3 { width: 320px; height: 320px; background: #2dd4bf; top: 30%; left: -100px; animation-delay: -12s; }
+  @keyframes blob {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    33%      { transform: translate(40px, -30px) scale(1.1); }
+    66%      { transform: translate(-30px, 40px) scale(0.95); }
+  }
+  .grid-pattern {
+    background-image: radial-gradient(rgba(255,255,255,0.18) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 40%, transparent 100%);
+  }
+
+  /* Text gradient */
+  .text-gradient {
+    background: linear-gradient(135deg, #ffffff 0%, #ccfbf1 50%, #5eead4 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .text-gradient-teal {
+    background: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Sticky nav */
+  .nav-blur {
+    background: rgba(255,255,255,0.78);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 0 1px 0 rgba(15,23,42,0.06);
+  }
+
+  /* ============ Cards ============ */
+  .glass-card {
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.7); box-shadow: var(--shadow-md);
+  }
+  .persona-card {
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: pointer; background: white;
+    box-shadow: var(--shadow-sm);
+    position: relative; overflow: hidden;
+  }
+  .persona-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, transparent 0%, rgba(20,184,166,0.08) 100%);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .persona-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: var(--shadow-lg);
+  }
+  .persona-card:hover::before { opacity: 1; }
+  .persona-card.active {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+  }
+  .persona-card .persona-emoji { transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .persona-card:hover .persona-emoji { transform: scale(1.2) rotate(-8deg); }
+
+  .book-card {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white; box-shadow: var(--shadow-sm);
+  }
+  .book-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--teal-400);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* ============ Book cover ============ */
+  .cover-slot {
+    box-shadow: 0 2px 8px -2px rgba(15,23,42,0.15);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .book-card:hover .cover-slot {
+    transform: scale(1.05) rotate(-2deg);
+    box-shadow: 0 6px 16px -4px rgba(15,23,42,0.25);
+  }
+
+  /* ============ Score bar with shine ============ */
+  .score-bar {
+    height: 5px; border-radius: 4px;
+    background: linear-gradient(90deg, var(--teal-400), var(--teal-600));
+    position: relative; overflow: hidden;
+  }
+  .score-bar::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+    animation: shine 3s ease-in-out infinite;
+  }
+  @keyframes shine { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+  /* ============ Animations ============ */
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .fade-in-stagger > * { animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .fade-in-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+  .fade-in-stagger > *:nth-child(2) { animation-delay: 0.1s; }
+  .fade-in-stagger > *:nth-child(3) { animation-delay: 0.15s; }
+  .fade-in-stagger > *:nth-child(4) { animation-delay: 0.2s; }
+  .fade-in-stagger > *:nth-child(5) { animation-delay: 0.25s; }
+  .fade-in-stagger > *:nth-child(6) { animation-delay: 0.3s; }
+  .fade-in-stagger > *:nth-child(n+7) { animation-delay: 0.35s; }
+
+  /* ============ Spinner / Skeleton ============ */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--teal-100);
+    border-top-color: var(--teal-600);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+  .skeleton {
+    background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+    background-size: 1000px 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+  }
+
+  /* ============ Tab pills ============ */
+  .tab-pill {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background: transparent; color: var(--slate-500);
+    padding: 10px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; border: none;
+    position: relative;
+  }
+  .tab-pill:hover { background: var(--slate-100); color: var(--slate-800); }
+  .tab-pill.active {
+    background: linear-gradient(135deg, var(--teal-600), var(--teal-700));
+    color: white;
+    box-shadow: 0 6px 16px -4px rgba(13,148,136,0.5);
+  }
+
+  /* ============ Step pill (onboarding) ============ */
+  .step-pill { display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 20px; background: white;
+    border: 1.5px solid #cbd5e1;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); font-size: 13px; }
+  .step-pill .step-num { display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%; background: #cbd5e1; color: white;
+    font-weight: 700; font-size: 12px; transition: all 0.3s; }
+  .step-pill .step-label { font-weight: 600; color: #64748b; }
+  .step-pill.active {
+    border-color: var(--teal-600);
+    background: linear-gradient(135deg, #ecfdf5, #ccfbf1);
+    transform: scale(1.05);
+  }
+  .step-pill.active .step-num {
+    background: var(--teal-600);
+    box-shadow: 0 0 0 4px rgba(13,148,136,0.15);
+  }
+  .step-pill.active .step-label { color: var(--teal-700); }
+  .step-pill.done { border-color: #10b981; background: #ecfdf5; }
+  .step-pill.done .step-num { background: #10b981; }
+  .step-pill.done .step-label { color: #047857; }
+
+  /* ============ Misc ============ */
+  html { scroll-behavior: smooth; }
+  .stat-num { font-feature-settings: 'tnum'; font-variant-numeric: tabular-nums; }
+
+  .chip {
+    background: linear-gradient(135deg, var(--teal-50), white);
+    border: 1px solid var(--teal-100); color: var(--teal-700);
+    padding: 6px 12px; border-radius: 999px; font-size: 13px;
+    display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s;
+  }
+  .chip:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .chip button { color: var(--teal-600); font-weight: 700; padding: 0 4px; transition: color 0.2s; }
+  .chip button:hover { color: #dc2626; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 4px; transition: background 0.2s; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--slate-300); }
+
+  /* Pulse for live status indicator */
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+    100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+  }
+  .live-dot { animation: pulse-ring 2s infinite; }
+
+  /* Magnetic button hover */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--teal-600), var(--teal-700));
+    color: white; font-weight: 600; padding: 12px 24px; border-radius: 12px;
+    box-shadow: 0 4px 14px -2px rgba(13,148,136,0.4);
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative; overflow: hidden;
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px -4px rgba(13,148,136,0.55);
+  }
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+  .btn-primary:disabled { background: var(--slate-200); color: var(--slate-500); cursor: not-allowed; box-shadow: none; }
+  .btn-primary::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: 0; height: 0; border-radius: 50%;
+    background: rgba(255,255,255,0.3); transform: translate(-50%, -50%);
+    transition: width 0.5s, height 0.5s;
+  }
+  .btn-primary:active::after { width: 200%; height: 200%; }
+
+  /* Tag with subtle border */
+  .tag-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
+    border: 1px solid currentColor;
+  }
+
+  /* Result panel entrance */
+  @keyframes slideInUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  #result-panel:not(.hidden) { animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+</style>
+</head>
+<body>
+
+<!-- ============== Sticky Nav ============== -->
+<nav class="nav-blur sticky top-0 z-50 border-b border-slate-200/60">
+  <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center text-white font-bold">
+        L
+      </div>
+      <div>
+        <div class="font-bold text-slate-900 leading-tight">Library GNN</div>
+        <div class="text-xs text-slate-500 leading-tight">圖書館推薦系統</div>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-1">
+      <a href="#try" class="tab-pill">試試看</a>
+      <a href="#analytics" class="tab-pill">分析</a>
+      <a href="#about" class="tab-pill">關於</a>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-600 px-2.5 py-1 bg-slate-100 rounded-md font-medium">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 live-dot"></span> 模型已就緒
+      </span>
+    </div>
+  </div>
+</nav>
+
+<!-- ============== Hero ============== -->
+<header class="hero-bg text-white relative">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+  <div class="grid-pattern absolute inset-0"></div>
+  <div class="relative max-w-6xl mx-auto px-6 py-20 md:py-32">
+    <div class="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-semibold mb-6 border border-white/25 fade-in">
+      <span class="w-1.5 h-1.5 rounded-full bg-teal-200 live-dot"></span>
+      Graph Neural Network · LightGCN (SIGIR 2020)
+    </div>
+    <h1 class="font-display text-5xl md:text-7xl leading-[1.05] mb-6 fade-in" style="animation-delay:0.1s">
+      看見讀者的
+      <span class="text-gradient block mt-2">下一本好書</span>
+    </h1>
+    <p class="text-lg md:text-xl text-teal-50/90 max-w-2xl mb-10 leading-relaxed fade-in" style="animation-delay:0.2s">
+      用圖神經網路在 <strong class="text-white">130 萬筆</strong>借閱資料上學習讀者偏好，<br>
+      為每個人找到下一本最可能借的書。
+    </p>
+
+    <!-- Stat strip -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl">
+      <div class="bg-white/10 backdrop-blur border border-white/15 rounded-xl p-4">
+        <div class="text-3xl font-bold stat-num" id="stat-users">—</div>
+        <div class="text-xs text-teal-100 mt-1">讀者</div>
+      </div>
+      <div class="bg-white/10 backdrop-blur border border-white/15 rounded-xl p-4">
+        <div class="text-3xl font-bold stat-num" id="stat-books">—</div>
+        <div class="text-xs text-teal-100 mt-1">書籍</div>
+      </div>
+      <div class="bg-white/10 backdrop-blur border border-white/15 rounded-xl p-4">
+        <div class="text-3xl font-bold stat-num" id="stat-train">—</div>
+        <div class="text-xs text-teal-100 mt-1">訓練互動</div>
+      </div>
+      <div class="bg-white/10 backdrop-blur border border-white/15 rounded-xl p-4">
+        <div class="text-3xl font-bold stat-num">11</div>
+        <div class="text-xs text-teal-100 mt-1">模型對照</div>
+      </div>
+    </div>
+
+    <div class="mt-12 flex flex-wrap gap-3">
+      <a href="#try" class="inline-flex items-center gap-2 bg-white text-teal-700 font-semibold px-5 py-3 rounded-xl hover:bg-teal-50 transition shadow-lg">
+        開始試用
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+      </a>
+      <a href="#about" class="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/30 text-white font-semibold px-5 py-3 rounded-xl hover:bg-white/20 transition">
+        了解技術細節
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- ============== How it works ============== -->
+<section class="max-w-6xl mx-auto px-6 py-16">
+  <div class="grid md:grid-cols-3 gap-6">
+    <div class="text-center">
+      <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg">1</div>
+      <h3 class="font-bold text-slate-900 mb-1">選讀者類型</h3>
+      <p class="text-sm text-slate-600">挑一個預設的人物原型，或自己組合喜歡的書</p>
+    </div>
+    <div class="text-center">
+      <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg">2</div>
+      <h3 class="font-bold text-slate-900 mb-1">模型即時推薦</h3>
+      <p class="text-sm text-slate-600">LightGCN 將你的書本轉為向量，找出最相似的書</p>
+    </div>
+    <div class="text-center">
+      <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg">3</div>
+      <h3 class="font-bold text-slate-900 mb-1">看到 Top-K 書單</h3>
+      <p class="text-sm text-slate-600">含分類顏色、相似度分數，並有分類分布視覺化</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============== Try It ============== -->
+<section id="try" class="max-w-6xl mx-auto px-6 py-12">
+
+  <!-- Mode tabs -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+    <div>
+      <div class="text-xs uppercase tracking-wider text-teal-700 font-semibold mb-1">Demo</div>
+      <h2 class="font-display text-3xl font-bold text-slate-900">挑選一個讀者，看看模型怎麼推薦</h2>
+    </div>
+    <div class="flex gap-2 bg-slate-100 p-1 rounded-xl flex-wrap">
+      <button id="tab-personas" class="tab-pill active">11 種人物原型</button>
+      <button id="tab-custom" class="tab-pill">新讀者引導 (Cold-start)</button>
+      <button id="tab-compare" class="tab-pill">比較兩個原型</button>
+    </div>
+  </div>
+
+  <!-- Personas tab -->
+  <div id="page-personas">
+    <div id="personas-grid" class="fade-in-stagger grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+      <div class="text-slate-400 text-sm col-span-full">載入中...</div>
+    </div>
+  </div>
+
+  <!-- Custom tab — 同時是「新讀者 onboarding 流程」 -->
+  <div id="page-custom" class="hidden">
+    <!-- 三步驟引導 banner -->
+    <div class="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-2xl p-5 mb-6">
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <div class="text-xs font-bold text-teal-700 uppercase tracking-wider mb-1">Cold-start Onboarding</div>
+          <h3 class="font-bold text-slate-900 text-lg">新讀者引導：3 步驟取得個人化推薦</h3>
+          <p class="text-sm text-slate-600 mt-1">
+            完全沒有借閱紀錄的新讀者，透過此流程建立合成讀者向量，
+            無需歷史資料即可獲得 GNN 推薦。
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="step-pill active" data-step="1">
+            <span class="step-num">1</span>
+            <span class="step-label">選書</span>
+          </div>
+          <div class="text-slate-300">→</div>
+          <div class="step-pill" data-step="2">
+            <span class="step-num">2</span>
+            <span class="step-label">確認</span>
+          </div>
+          <div class="text-slate-300">→</div>
+          <div class="step-pill" data-step="3">
+            <span class="step-num">3</span>
+            <span class="step-label">推薦</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6">
+      <!-- Search -->
+      <div class="lg:col-span-2 glass-card rounded-2xl p-6">
+        <h3 class="font-bold text-slate-900 mb-1">1. 搜尋並加入喜歡的書</h3>
+        <p class="text-sm text-slate-500 mb-4">輸入書名或作者（部分文字也行），加 3-5 本</p>
+        <div class="relative">
+          <input id="search-input" type="text"
+                 placeholder="例：原子習慣、東野圭吾、Magic Tree House..."
+                 class="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+          <svg class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+        <div id="search-results" class="mt-4 max-h-72 overflow-y-auto"></div>
+      </div>
+
+      <!-- Selected -->
+      <div class="glass-card rounded-2xl p-6">
+        <h3 class="font-bold text-slate-900 mb-1">2. 確認已選 (<span id="selected-count">0</span>/5)</h3>
+        <p class="text-sm text-slate-500 mb-4">至少 3 本，越多越準</p>
+        <div id="selected-books" class="flex flex-wrap gap-2 mb-4 min-h-[80px]">
+          <p class="text-sm text-slate-400">尚未選擇任何書</p>
+        </div>
+        <button id="recommend-btn" disabled class="btn-primary w-full text-base">
+          產生推薦書單
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compare tab -->
+  <div id="page-compare" class="hidden">
+    <div class="glass-card rounded-2xl p-6">
+      <h3 class="font-bold text-slate-900 mb-1">並排比較兩個讀者原型</h3>
+      <p class="text-sm text-slate-500 mb-4">挑兩個 persona，看推薦書單有何不同 / 有沒有重疊</p>
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1 block">A：</label>
+          <select id="compare-a" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"></select>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1 block">B：</label>
+          <select id="compare-b" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"></select>
+        </div>
+      </div>
+      <button id="compare-btn" class="w-full px-5 py-3 bg-teal-600 text-white rounded-xl font-semibold hover:bg-teal-700 transition shadow-md">
+        產生並排比較
+      </button>
+    </div>
+    <div id="compare-result" class="mt-8"></div>
+  </div>
+
+  <!-- Result panel -->
+  <div id="result-panel" class="hidden mt-12">
+    <div id="result-loading" class="hidden text-center py-12">
+      <div class="spinner mx-auto"></div>
+      <p class="mt-4 text-slate-500">模型推薦中...</p>
+    </div>
+
+    <div id="result-content" class="hidden fade-in">
+      <!-- Header with persona name -->
+      <div id="result-header" class="mb-6"></div>
+
+      <div class="grid lg:grid-cols-3 gap-6">
+        <!-- Seeds (left) -->
+        <div class="glass-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <div class="text-xs uppercase tracking-wider text-slate-500 font-semibold">輸入</div>
+              <h3 class="font-bold text-slate-900">該讀者喜歡的書</h3>
+            </div>
+            <span id="seeds-count" class="text-2xl font-bold text-slate-300"></span>
+          </div>
+          <div id="seeds-list" class="space-y-2"></div>
+        </div>
+
+        <!-- Recommendations (middle) -->
+        <div class="lg:col-span-2 glass-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <div class="text-xs uppercase tracking-wider text-teal-700 font-semibold">LightGCN 預測</div>
+              <h3 class="font-bold text-slate-900">推薦書單</h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-500">Top</span>
+              <select id="k-select" class="bg-slate-100 border-0 rounded-lg px-3 py-1 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+              </select>
+            </div>
+          </div>
+          <div id="rec-list" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- Analytics row -->
+      <div id="analytics" class="mt-6 grid lg:grid-cols-2 gap-6">
+        <div class="glass-card rounded-2xl p-6">
+          <h3 class="font-bold text-slate-900 mb-1">推薦書的分類分布</h3>
+          <p class="text-xs text-slate-500 mb-4">顯示 GNN 推薦的書屬於哪些中圖法大類</p>
+          <div class="h-64"><canvas id="cat-chart"></canvas></div>
+        </div>
+        <div class="glass-card rounded-2xl p-6">
+          <h3 class="font-bold text-slate-900 mb-1">分數分布</h3>
+          <p class="text-xs text-slate-500 mb-4">每本推薦書的相似度分數</p>
+          <div class="h-64"><canvas id="score-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== About ============== -->
+<section id="about" class="bg-gradient-to-b from-slate-50 to-white py-16 mt-12">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <div class="text-xs uppercase tracking-wider text-teal-700 font-semibold mb-2">About</div>
+      <h2 class="font-display text-3xl md:text-4xl font-bold text-slate-900">技術細節</h2>
+      <p class="text-slate-600 mt-3">本系統如何工作？</p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="glass-card rounded-2xl p-6">
+        <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+        </div>
+        <h3 class="font-bold text-slate-900 mb-2">資料</h3>
+        <p class="text-sm text-slate-600 leading-relaxed">某市立圖書館 2025 年完整年度的 130 萬筆借閱 + 32 萬筆預約紀錄。<br>已去識別化處理。</p>
+      </div>
+      <div class="glass-card rounded-2xl p-6">
+        <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <h3 class="font-bold text-slate-900 mb-2">模型</h3>
+        <p class="text-sm text-slate-600 leading-relaxed"><b>LightGCN</b>（SIGIR 2020 SOTA）為主，建構讀者—書籍二部圖。<br>3 層圖卷積、64 維 embedding。</p>
+      </div>
+      <div class="glass-card rounded-2xl p-6">
+        <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <h3 class="font-bold text-slate-900 mb-2">表現</h3>
+        <p class="text-sm text-slate-600 leading-relaxed">與 Popular、ItemCF、BPR-MF、NGCF 等 10 個基線比較。<br><b>LightGCN-Multi</b> Recall@10 = 0.268（最強）。</p>
+      </div>
+    </div>
+
+    <!-- Privacy box -->
+    <div class="mt-8 bg-amber-50 border border-amber-200 rounded-2xl p-6 flex items-start gap-4">
+      <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0h-2m9-9a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div>
+        <h4 class="font-bold text-amber-900 mb-1">隱私聲明</h4>
+        <p class="text-sm text-amber-800">資料來源已去識別化，本 demo 不直接顯示任何真實讀者 ID。Demo 中的「人物原型」皆為合成範例，並透過模型計算合成讀者向量產生推薦。</p>
+      </div>
+    </div>
+
+    <!-- Recommendation logic -->
+    <div class="mt-8 grid md:grid-cols-2 gap-6 items-start">
+      <div>
+        <h3 class="font-bold text-slate-900 mb-3">推薦邏輯（這個 demo）</h3>
+        <ol class="space-y-3">
+          <li class="flex gap-3">
+            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">1</span>
+            <span class="text-sm text-slate-700">你選一個 persona 或自訂幾本喜歡的書</span>
+          </li>
+          <li class="flex gap-3">
+            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">2</span>
+            <span class="text-sm text-slate-700">系統取這些書的 LightGCN embedding，平均後 L2 normalise</span>
+          </li>
+          <li class="flex gap-3">
+            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">3</span>
+            <span class="text-sm text-slate-700">計算與全部 29,685 本書的 cosine 相似度，回傳 Top-K</span>
+          </li>
+        </ol>
+      </div>
+      <div class="bg-slate-900 rounded-2xl p-6 text-slate-100 text-sm font-mono overflow-x-auto">
+<pre class="text-xs leading-relaxed">
+<span class="text-teal-400"># 合成讀者推薦</span>
+<span class="text-purple-300">user_vec</span> = item_embs[liked].mean(dim=<span class="text-amber-300">0</span>)
+<span class="text-purple-300">scores</span> = cosine(user_vec, all_items)
+top_k = scores.argsort()[-<span class="text-amber-300">k</span>:]</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== Footer ============== -->
+<footer class="bg-slate-900 text-slate-300 py-12">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="grid md:grid-cols-3 gap-8 mb-8">
+      <div>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center text-white font-bold">L</div>
+          <div class="font-bold text-white">Library GNN Recommender</div>
+        </div>
+        <p class="text-sm text-slate-400">基於圖神經網路（LightGCN）的個人化書籍推薦系統，畢業專題作品。</p>
+      </div>
+      <div>
+        <h4 class="font-bold text-white mb-3">關鍵字</h4>
+        <div class="flex flex-wrap gap-2">
+          <span class="text-xs bg-slate-800 px-2 py-1 rounded">Graph Neural Network</span>
+          <span class="text-xs bg-slate-800 px-2 py-1 rounded">LightGCN</span>
+          <span class="text-xs bg-slate-800 px-2 py-1 rounded">Recommendation</span>
+          <span class="text-xs bg-slate-800 px-2 py-1 rounded">PyTorch</span>
+          <span class="text-xs bg-slate-800 px-2 py-1 rounded">Library Analytics</span>
+        </div>
+      </div>
+      <div>
+        <h4 class="font-bold text-white mb-3">技術 stack</h4>
+        <p class="text-sm text-slate-400">PyTorch 2.6 · PyTorch Geometric 2.7 · FastAPI · Tailwind CSS · Chart.js</p>
+      </div>
+    </div>
+    <div class="border-t border-slate-800 pt-6 text-sm text-slate-500 text-center">
+      © 2026 Library GNN Recommender · 畢業專題
+    </div>
+  </div>
+</footer>
+
+<script>
+const API_BASE = '';
+
+// ============== Stats counter (animated) ==============
+async function loadStats() {
+  try {
+    const r = await fetch(`${API_BASE}/api/stats`);
+    const s = await r.json();
+    animateCount('stat-users', s.n_users);
+    animateCount('stat-books', s.n_items);
+    animateCount('stat-train', s.n_train);
+  } catch(e) {}
+}
+function animateCount(id, target) {
+  const el = document.getElementById(id);
+  const fmt = n => n >= 1e6 ? (n/1e6).toFixed(1) + 'M' : n >= 1e3 ? (n/1e3).toFixed(1) + 'K' : n;
+  let cur = 0; const dur = 1000; const start = performance.now();
+  function step(t) {
+    const p = Math.min((t - start) / dur, 1);
+    cur = Math.floor(target * (1 - Math.pow(1 - p, 3)));
+    el.textContent = fmt(cur);
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = fmt(target);
+  }
+  requestAnimationFrame(step);
+}
+
+// ============== Tab switching ==============
+const tabPersonas = document.getElementById('tab-personas');
+const tabCustom = document.getElementById('tab-custom');
+const tabCompare = document.getElementById('tab-compare');
+tabPersonas.addEventListener('click', () => switchTab('personas'));
+tabCustom.addEventListener('click', () => switchTab('custom'));
+tabCompare.addEventListener('click', () => switchTab('compare'));
+function switchTab(t) {
+  tabPersonas.classList.toggle('active', t === 'personas');
+  tabCustom.classList.toggle('active', t === 'custom');
+  tabCompare.classList.toggle('active', t === 'compare');
+  document.getElementById('page-personas').classList.toggle('hidden', t !== 'personas');
+  document.getElementById('page-custom').classList.toggle('hidden', t !== 'custom');
+  document.getElementById('page-compare').classList.toggle('hidden', t !== 'compare');
+  // 只「隱藏」結果面板（不刪內部 DOM）
+  document.getElementById('result-panel').classList.add('hidden');
+  document.getElementById('compare-result').innerHTML = '';
+  currentMode = null;
+  currentPersonaKey = null;
+  document.querySelectorAll('.persona-card').forEach(b => b.classList.remove('active'));
+}
+
+// ============== Helpers ==============
+const coverCache = new Map();  // isbn -> url 或 null
+
+async function fetchCover(isbn) {
+  if (!isbn) return null;
+  if (coverCache.has(isbn)) return coverCache.get(isbn);
+  try {
+    // 先試 Open Library（單純圖片，快）
+    const ol = `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg?default=false`;
+    // 用 Image 物件偵測載入
+    const olOk = await new Promise(res => {
+      const img = new Image();
+      img.onload = () => res(img.naturalWidth > 1);
+      img.onerror = () => res(false);
+      img.src = ol;
+    });
+    if (olOk) { coverCache.set(isbn, ol); return ol; }
+    // fallback: Google Books JSON API
+    const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&fields=items(volumeInfo/imageLinks)`);
+    const data = await r.json();
+    let url = data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail || null;
+    if (url) url = url.replace('http://', 'https://');
+    coverCache.set(isbn, url);
+    return url;
+  } catch {
+    coverCache.set(isbn, null);
+    return null;
+  }
+}
+
+function lazyLoadCovers(scope) {
+  // scope 是包含 .cover-slot 的 root element
+  scope.querySelectorAll('.cover-slot[data-isbn]').forEach(async slot => {
+    const isbn = slot.dataset.isbn;
+    if (!isbn) return;
+    const url = await fetchCover(isbn);
+    if (url) {
+      slot.innerHTML = `<img src="${url}" class="w-full h-full object-cover rounded-md" alt="cover" loading="lazy">`;
+    }
+  });
+}
+
+function bookCard(item, opts = {}) {
+  const score = opts.score !== undefined ? `<div class="score-bar mt-2" style="width:${Math.max(10, item.score*100)}%; max-width:120px"></div>` : '';
+  const rank = opts.rank ? `<span class="text-xs font-bold text-slate-400 mr-2">${opts.rank}</span>` : '';
+  const removeBtn = opts.removable ? `<button onclick="removeBook(${item.book_id})" class="text-slate-400 hover:text-red-500 text-lg font-bold px-2">×</button>` : '';
+  // 即時回饋：在推薦結果中按「我也借過」會把該書加入 selected 並重算
+  const feedbackBtn = opts.feedback ?
+    `<button onclick="markAsRead(${item.book_id}, '${(item.title || '').replace(/'/g,"\\'").slice(0,40)}', '${(item.author || '').replace(/'/g,"\\'").slice(0,30)}', '${item.cat_color || ''}', '${item.cat_label || ''}', '${item.isbn || ''}')"
+       class="flex-shrink-0 text-[11px] px-2 py-1 bg-teal-50 text-teal-700 rounded-md font-semibold hover:bg-teal-100 border border-teal-200" title="把這本加入我的書單，重算推薦">
+       + 我也借過
+     </button>` : '';
+  const catBadge = `<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${item.cat_color}20; color:${item.cat_color}">${item.cat_label || '?'}</span>`;
+  const scoreText = opts.score !== undefined ? `<span class="text-xs text-teal-700 font-semibold">${item.score.toFixed(3)}</span>` : '';
+  const why = item.why ? `<div class="mt-1.5 text-[10px] inline-flex items-center gap-1 px-1.5 py-0.5 rounded" style="background:${item.why.color}15; color:${item.why.color}">▸ ${item.why.short}</div>` : '';
+  const isHighlight = opts.highlight;
+  const cover = `<div class="cover-slot flex-shrink-0 w-14 h-20 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-300 text-base overflow-hidden" data-isbn="${item.isbn || ''}">${item.isbn ? '📖' : '—'}</div>`;
+  return `
+    <div class="book-card border ${isHighlight ? 'border-amber-400 bg-amber-50' : 'border-slate-200'} rounded-xl p-3 flex items-start gap-3 fade-in">
+      ${rank}
+      ${cover}
+      <div class="flex-1 min-w-0">
+        <div class="font-medium text-slate-900 truncate" title="${(item.title || '?').replace(/"/g,'&quot;')}">${item.title || '?'}</div>
+        <div class="text-xs text-slate-500 truncate mt-0.5">${item.author || '?'}</div>
+        <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+          ${catBadge}
+          ${scoreText}
+        </div>
+        ${why}
+        ${score}
+      </div>
+      ${feedbackBtn}
+      ${removeBtn}
+    </div>
+  `;
+}
+
+// 即時回饋：把推薦書加入 selected 並重算
+window.markAsRead = function(bookId, title, author, catColor, catLabel, isbn) {
+  if (selected.size >= 8) {
+    alert('最多 8 本（已加滿，先 × 移除一些）');
+    return;
+  }
+  selected.set(bookId, {
+    book_id: bookId, title: title, author: author,
+    cat_color: catColor, cat_label: catLabel, isbn: isbn
+  });
+  renderSelected();
+  // 自動切到自訂 tab 並重新跑推薦
+  switchTab('custom');
+  setTimeout(() => {
+    currentMode = 'custom';
+    currentPersonaKey = null;
+    runCustomRecommend();
+  }, 100);
+};
+
+// ============== State ==============
+// 記住目前展示的 persona / 自訂選的書，給 k-select 變更時重跑用
+let currentMode = null;       // 'persona' | 'custom' | null
+let currentPersonaKey = null; // 'japanese_mystery' 等
+
+function getK() {
+  const el = document.getElementById('k-select');
+  return el ? parseInt(el.value) : 10;
+}
+
+// 監聽 k-select 變化 → 自動重跑推薦
+document.getElementById('k-select').addEventListener('change', () => {
+  if (currentMode === 'persona' && currentPersonaKey) {
+    loadPersona(currentPersonaKey, getK());
+  } else if (currentMode === 'custom' && selected.size > 0) {
+    runCustomRecommend();
+  }
+});
+
+// ============== Personas ==============
+async function loadPersonas() {
+  try {
+    const r = await fetch(`${API_BASE}/api/personas`);
+    const list = await r.json();
+    const grid = document.getElementById('personas-grid');
+    grid.innerHTML = list.map(p => `
+      <button data-key="${p.key}" class="persona-card border border-slate-200 rounded-2xl p-5 text-left">
+        <div class="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style="background:linear-gradient(90deg, ${p.color}, ${p.color}80)"></div>
+        <div class="persona-emoji text-4xl mb-3">${p.emoji}</div>
+        <div class="font-bold text-slate-900 mb-1.5 text-base">${p.name}</div>
+        <p class="text-xs text-slate-500 leading-relaxed mb-3">${p.desc}</p>
+        <div class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md" style="background:${p.color}15; color:${p.color}">
+          看推薦
+          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+        </div>
+      </button>
+    `).join('');
+    grid.querySelectorAll('.persona-card').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.persona-card').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMode = 'persona';
+        currentPersonaKey = btn.dataset.key;
+        loadPersona(btn.dataset.key, getK());
+      });
+    });
+  } catch(e) {
+    document.getElementById('personas-grid').innerHTML = '<p class="text-red-500">載入 personas 失敗</p>';
+  }
+}
+
+async function loadPersona(key, k) {
+  showLoading(true);
+  try {
+    const r = await fetch(`${API_BASE}/api/persona/${key}?k=${k}`);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const data = await r.json();
+    if (!data || !Array.isArray(data.seeds) || !Array.isArray(data.recommendations)) {
+      throw new Error('回傳資料格式不正確');
+    }
+    renderResult(data, key);
+  } catch(e) {
+    showError('此 persona 無法推薦：' + e.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ============== Custom search ==============
+const selected = new Map();
+const searchInput = document.getElementById('search-input');
+let searchTimer = null;
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(doSearch, 300);
+});
+
+async function doSearch() {
+  const q = searchInput.value.trim();
+  const container = document.getElementById('search-results');
+  if (!q) { container.innerHTML = ''; return; }
+  try {
+    const r = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(q)}&n=10`);
+    const list = await r.json();
+    if (!list.length) {
+      container.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">找不到</p>';
+      return;
+    }
+    container.innerHTML = '<div class="space-y-2">' + list.map(b => {
+      const cat = `<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:${b.cat_color}20; color:${b.cat_color}">${b.cat_label || '?'}</span>`;
+      const data = encodeURIComponent(JSON.stringify(b));
+      return `
+        <div class="flex items-center justify-between gap-2 p-2 hover:bg-slate-50 rounded-lg fade-in">
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium truncate">${b.title}</div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-xs text-slate-500 truncate">${b.author || '?'}</span>
+              ${cat}
+            </div>
+          </div>
+          <button data-book='${data}' class="add-btn flex-shrink-0 px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-semibold hover:bg-teal-700">+ 加入</button>
+        </div>`;
+    }).join('') + '</div>';
+    container.querySelectorAll('.add-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (selected.size >= 5) { alert('最多選 5 本'); return; }
+        const b = JSON.parse(decodeURIComponent(btn.dataset.book));
+        selected.set(b.book_id, b);
+        renderSelected();
+      });
+    });
+  } catch(e) {
+    container.innerHTML = '<p class="text-red-500">搜尋失敗</p>';
+  }
+}
+
+function updateOnboardingSteps(stepIdx) {
+  // stepIdx: 1 = 選書中, 2 = 已選 ≥3 本, 3 = 結果已出
+  document.querySelectorAll('.step-pill').forEach(el => {
+    const n = parseInt(el.dataset.step);
+    el.classList.remove('active', 'done');
+    if (n < stepIdx) el.classList.add('done');
+    else if (n === stepIdx) el.classList.add('active');
+  });
+}
+
+function renderSelected() {
+  document.getElementById('selected-count').textContent = selected.size;
+  // 同步更新 onboarding 進度
+  if (selected.size === 0) updateOnboardingSteps(1);
+  else if (selected.size >= 3) updateOnboardingSteps(2);
+  else updateOnboardingSteps(1);
+  const c = document.getElementById('selected-books');
+  if (selected.size === 0) {
+    c.innerHTML = '<p class="text-sm text-slate-400">尚未選擇任何書</p>';
+    document.getElementById('recommend-btn').disabled = true;
+    return;
+  }
+  c.innerHTML = Array.from(selected.values()).map(b =>
+    `<span class="chip" title="${(b.title || '').replace(/"/g,'&quot;')}">${(b.title || '?').slice(0, 14)}${b.title?.length > 14 ? '...' : ''}<button onclick="removeBook(${b.book_id})">×</button></span>`
+  ).join('');
+  document.getElementById('recommend-btn').disabled = false;
+}
+
+window.removeBook = (id) => { selected.delete(id); renderSelected(); };
+
+async function runCustomRecommend() {
+  showLoading(true);
+  try {
+    const r = await fetch(`${API_BASE}/api/recommend`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ book_ids: Array.from(selected.keys()), k: getK() }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const data = await r.json();
+    if (!data || !Array.isArray(data.seeds) || !Array.isArray(data.recommendations)) {
+      throw new Error('回傳資料格式不正確');
+    }
+    renderResult(data, null);
+    updateOnboardingSteps(3);  // 第三步完成
+  } catch(e) {
+    showError('推薦失敗：' + e.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
+document.getElementById('recommend-btn').addEventListener('click', () => {
+  currentMode = 'custom';
+  currentPersonaKey = null;
+  runCustomRecommend();
+});
+
+// ============== Compare Personas ==============
+async function populateCompareSelects() {
+  try {
+    const r = await fetch(`${API_BASE}/api/personas`);
+    const list = await r.json();
+    const a = document.getElementById('compare-a');
+    const b = document.getElementById('compare-b');
+    list.forEach((p, idx) => {
+      const opt = `<option value="${p.key}">${p.emoji} ${p.name}</option>`;
+      a.insertAdjacentHTML('beforeend', opt);
+      b.insertAdjacentHTML('beforeend', opt);
+    });
+    if (list.length >= 2) {
+      a.selectedIndex = 0;
+      b.selectedIndex = 1;
+    }
+  } catch(e) {}
+}
+populateCompareSelects();
+
+document.getElementById('compare-btn').addEventListener('click', async () => {
+  const a = document.getElementById('compare-a').value;
+  const b = document.getElementById('compare-b').value;
+  if (!a || !b) return;
+  if (a === b) { showError('請選兩個不同的 persona'); return; }
+  const c = document.getElementById('compare-result');
+  c.innerHTML = '<div class="text-center py-12"><div class="spinner mx-auto"></div><p class="mt-4 text-slate-500">並排推薦中...</p></div>';
+  try {
+    const r = await fetch(`${API_BASE}/api/compare?a=${a}&b=${b}&k=10`);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const data = await r.json();
+    renderCompareResult(data);
+  } catch(e) {
+    c.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">比較失敗：${e.message}</div>`;
+  }
+});
+
+function renderCompareResult(data) {
+  const c = document.getElementById('compare-result');
+  const commonIds = new Set(data.common_book_ids);
+
+  function panel(side, info) {
+    const recs = info.recommendations.map((r, i) =>
+      bookCard(r, { rank: i + 1, score: true, highlight: commonIds.has(r.book_id) })
+    ).join('');
+    const seeds = info.seeds.map(s => bookCard(s)).join('');
+    return `
+      <div class="glass-card rounded-2xl p-5">
+        <div class="flex items-center gap-3 mb-4 pb-3 border-b" style="border-color:${info.persona_color}40">
+          <div class="text-3xl">${info.persona_emoji}</div>
+          <div>
+            <div class="text-xs text-slate-500 uppercase tracking-wider">${side}</div>
+            <div class="text-lg font-bold" style="color:${info.persona_color}">${info.persona_name}</div>
+          </div>
+        </div>
+        <div class="text-xs font-semibold text-slate-500 mb-2 uppercase">該讀者喜歡的書</div>
+        <div class="space-y-1.5 mb-5" id="cmp-${side}-seeds">${seeds}</div>
+        <div class="text-xs font-semibold text-slate-500 mb-2 uppercase">推薦 Top-10</div>
+        <div class="space-y-1.5" id="cmp-${side}-recs">${recs}</div>
+      </div>`;
+  }
+
+  const overlapMsg = data.n_common === 0
+    ? '<div class="bg-blue-50 border border-blue-200 text-blue-700 rounded-xl px-4 py-3 mb-6 text-sm">兩個原型的推薦完全沒有重疊 — 模型清楚區分了不同興趣群體</div>'
+    : `<div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 mb-6 text-sm">兩個原型的推薦有 <b>${data.n_common}</b> 本重疊（已標黃色框）— 代表跨族群都會借的「通用熱門書」</div>`;
+
+  c.innerHTML = overlapMsg + `
+    <div class="grid lg:grid-cols-2 gap-5">
+      ${panel('A', data.a)}
+      ${panel('B', data.b)}
+    </div>`;
+
+  setTimeout(() => {
+    lazyLoadCovers(c);
+    c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+function showError(msg) {
+  document.getElementById('result-panel').classList.remove('hidden');
+  document.getElementById('result-loading').classList.add('hidden');
+  document.getElementById('result-content').classList.remove('hidden');
+  document.getElementById('result-header').innerHTML = '';
+  document.getElementById('seeds-list').innerHTML = '';
+  document.getElementById('rec-list').innerHTML = `
+    <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+      <div class="font-bold mb-1">無法產生推薦</div>
+      <div>${msg}</div>
+    </div>`;
+  document.getElementById('seeds-count').textContent = '—';
+  if (catChart) { catChart.destroy(); catChart = null; }
+  if (scoreChart) { scoreChart.destroy(); scoreChart = null; }
+}
+
+// ============== Render result ==============
+let catChart = null, scoreChart = null;
+function renderResult(data, personaKey) {
+  const panel = document.getElementById('result-panel');
+  panel.classList.remove('hidden');
+  document.getElementById('result-content').classList.remove('hidden');
+  // Force re-trigger animation
+  const c = document.getElementById('result-content');
+  c.style.animation = 'none'; c.offsetHeight; c.style.animation = '';
+  // 自動捲動到結果區（讓使用者立刻看到）
+  setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+
+  // Header
+  if (personaKey) {
+    document.getElementById('result-header').innerHTML = `
+      <div class="text-xs uppercase tracking-wider text-teal-700 font-semibold">推薦結果</div>
+      <h2 class="font-display text-2xl font-bold text-slate-900 mt-1">基於選定原型的推薦</h2>`;
+  } else {
+    document.getElementById('result-header').innerHTML = `
+      <div class="text-xs uppercase tracking-wider text-teal-700 font-semibold">自訂推薦結果</div>
+      <h2 class="font-display text-2xl font-bold text-slate-900 mt-1">為你個人化的書單</h2>`;
+  }
+
+  document.getElementById('seeds-count').textContent = data.seeds.length;
+  document.getElementById('seeds-list').innerHTML = data.seeds.map(s => bookCard(s)).join('');
+  document.getElementById('rec-list').innerHTML = data.recommendations.map((r, i) =>
+    bookCard(r, { rank: i + 1, score: true, feedback: true })
+  ).join('');
+
+  // Category donut
+  if (catChart) catChart.destroy();
+  const catCtx = document.getElementById('cat-chart');
+  const catLabels = data.cat_distribution.map(c => c.label);
+  const catData = data.cat_distribution.map(c => c.count);
+  const catColors = ['#0d9488', '#14b8a6', '#22d3ee', '#0ea5e9', '#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#f59e0b', '#84cc16', '#9ca3af'];
+  catChart = new Chart(catCtx, {
+    type: 'doughnut',
+    data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: catColors.slice(0, catLabels.length), borderWidth: 2, borderColor: '#fff' }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { family: 'Noto Sans TC' }, padding: 12 } } } },
+  });
+
+  // Score bar
+  if (scoreChart) scoreChart.destroy();
+  const sCtx = document.getElementById('score-chart');
+  scoreChart = new Chart(sCtx, {
+    type: 'bar',
+    data: {
+      labels: data.recommendations.map((_, i) => `#${i+1}`),
+      datasets: [{ label: 'Cosine 相似度', data: data.recommendations.map(r => r.score), backgroundColor: '#0d9488', borderRadius: 4 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: false, suggestedMin: 0, suggestedMax: 1 } },
+      plugins: { legend: { display: false } },
+    },
+  });
+
+  // Scroll to result
+  setTimeout(() => document.getElementById('result-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  // 懶載入書封
+  setTimeout(() => {
+    lazyLoadCovers(document.getElementById('seeds-list'));
+    lazyLoadCovers(document.getElementById('rec-list'));
+  }, 200);
+}
+
+function showLoading(b) {
+  // b=true: 顯示 spinner、隱藏結果內容；b=false: 反之
+  const panel = document.getElementById('result-panel');
+  panel.classList.remove('hidden');
+  document.getElementById('result-loading').classList.toggle('hidden', !b);
+  document.getElementById('result-content').classList.toggle('hidden', b);
+  // 開始載入時就捲到結果區（讓使用者看到 spinner，知道有反應）
+  if (b) setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+// init
+loadStats();
+loadPersonas();
+</script>
+
+</body>
+</html>
